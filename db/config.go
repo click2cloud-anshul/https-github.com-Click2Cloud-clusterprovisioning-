@@ -10,7 +10,7 @@ import (
 var DB *sql.DB
 
 const (
-	host_1     = "192.168.1.172"
+	host_1     = "192.168.1.182"
 	port_1     = 5432
 	user_1     = "root"
 	password_1 = "smartvm"
@@ -31,6 +31,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Successfully connected!")
+	fmt.Println("Successfully connected for postgres!")
 
 }

@@ -5,12 +5,22 @@ import (
 	"net/http"
 )
 
-func Message(status bool, message string) map[string]interface{} {
-	return map[string]interface{}{"status": status, "message": message}
+func Message(status bool) map[string]interface{} {
+	return map[string]interface{}{"status": status}
 }
 
-func Respond(w http.ResponseWriter, data map[string]interface{}, errorCode int) {
+func Respond(w http.ResponseWriter, data map[string]interface{}, responseCode int) {
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(errorCode)
+	w.WriteHeader(responseCode)
 	_ = json.NewEncoder(w).Encode(data)
+}
+
+func Contains(slice []string, item string) bool {
+	set := make(map[string]struct{}, len(slice))
+	for _, s := range slice {
+		set[s] = struct{}{}
+	}
+
+	_, ok := set[item]
+	return ok
 }

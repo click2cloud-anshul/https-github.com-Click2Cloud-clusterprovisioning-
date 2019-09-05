@@ -11,6 +11,7 @@ type RegionWithVPCList struct {
 }
 
 type Vpcs struct {
+	CidrBlock  string     `json:"CidrBlock" xml:"CidrBlock"`
 	VpcId      string     `json:"VpcId" xml:"VpcId"`
 	RegionId   string     `json:"RegionId" xml:"RegionId"`
 	Status     string     `json:"Status" xml:"Status"`

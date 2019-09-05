@@ -17,7 +17,7 @@ func ServeHttp() {
 	router.HandleFunc("/ali/clusterprovisiong/getRegionList", ali.GetRegionList).Methods("GET")
 	router.HandleFunc("/ali/clusterprovisiong/getClusterStatus", ali.GetClusterStatus).Methods("GET")
 	router.HandleFunc("/ali/clusterprovisiong/getClusterConfig", ali.GetClusterConfig).Methods("GET")
-	//router.HandleFunc("/ali/clusterprovisiong/getInstances", ali.GetInstances).Methods("GET")
+	router.HandleFunc("/ali/clusterprovisiong/getInstances", ali.GetInstances).Methods("GET")
 	router.HandleFunc("/ali/clusterprovisiong/createKubernetesCluster", ali.CreateKubernetesCluster).Methods("POST")
 	router.HandleFunc("/ali/clusterprovisiong/getAllClusters", ali.GetAllClusters).Methods("GET")
 	router.HandleFunc("/ali/clusterprovisiong/deleteCluster", ali.DeleteCluster).Methods("DELETE")
