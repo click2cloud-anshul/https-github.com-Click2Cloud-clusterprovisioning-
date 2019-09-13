@@ -60,8 +60,7 @@ class Alibaba_ECS:
                 region_list.append(str(region['RegionId']))
             return True, region_list
         except Exception as e:
-            error = {"error_code": str(0), "error_msg": str(e)}
-            return False, error
+            return False, e.message
 
     def key_pairs_list(self):
         """
@@ -86,8 +85,7 @@ class Alibaba_ECS:
                 key_pair_list.append(str(key_pair['KeyPairName']))
             return True, key_pair_list
         except Exception as e:
-            error = {"error_code": str(0), "error_msg": str(e)}
-            return False, error
+            return False, e.message
 
     def vpc_list(self):
         """
@@ -144,5 +142,4 @@ class Alibaba_ECS:
                 vpc_list.append(vpc_info)
             return True, vpc_list
         except Exception as e:
-            error = {"error_code": str(0), "error_msg": str(e)}
-            return False, error
+            return False, e.message
