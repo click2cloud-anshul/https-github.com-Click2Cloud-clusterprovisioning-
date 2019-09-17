@@ -126,7 +126,7 @@ class Alibaba_CS:
 
             cluster_details_list = []
             if len(describe_clusters_response) == 0:
-                return False, "No clusters are present in the current account"
+                return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
                 cluster_info = {"cluster_info": cluster}

@@ -143,3 +143,17 @@ class Alibaba_ECS:
             return True, vpc_list
         except Exception as e:
             return False, e.message
+
+    # def instance_type_list(self):
+    #     try:
+    #         instance_type_list = {}
+    #         conn = client.AcsClient(
+    #             ak=self.access_key,
+    #             secret=self.secret_key,
+    #             region_id=self.region_id,
+    #         )
+    #
+    #
+    #         return True
+    #     except Exception as e:
+    #         return False, e.message

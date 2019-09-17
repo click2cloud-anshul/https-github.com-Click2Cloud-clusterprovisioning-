@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'psycopg2',
 ]
 
 MIDDLEWARE = [
@@ -72,9 +73,13 @@ WSGI_APPLICATION = 'clusterProvisioningClient.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'vmdb_development',
+        'USER': 'root',
+        'PASSWORD': 'smartvm',
+        'HOST': '192.168.1.182',
+        'PORT': '5432'
+    },
 }
 
 # Password validation

@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
+from common.apps import *
 from ali.ecs import *
 
 from ali.cluster import *
@@ -11,9 +11,10 @@ from ali.cluster import *
 
 @api_view(["GET"])
 def alibaba_region_list(params):
+    response = {}
     try:
         json_request = json.loads(params.body)
-        response = {}
+
         error = False
         valid_keys_json = ['access_key', 'secret_key']
 
@@ -49,13 +50,15 @@ def alibaba_region_list(params):
 
         return JsonResponse(response, safe=False)
     except Exception as e:
-        Response({"status": False,
-                  "message": "",
-                  "error": e.message})
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
 
 
 @api_view(["GET"])
 def alibaba_key_pair_list(params):
+    response = {}
     try:
         json_request = json.loads(params.body)
         response = {}
@@ -94,13 +97,15 @@ def alibaba_key_pair_list(params):
 
         return JsonResponse(response, safe=False)
     except Exception as e:
-        Response({"status": False,
-                  "message": "",
-                  "error": e.message})
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
 
 
 @api_view(["GET"])
 def get_vpc_list(params):
+    response = {}
     try:
         json_request = json.loads(params.body)
         response = {}
@@ -139,13 +144,15 @@ def get_vpc_list(params):
 
         return JsonResponse(response, safe=False)
     except Exception as e:
-        Response({"status": False,
-                  "message": "",
-                  "error": e.message})
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
 
 
 @api_view(["GET"])
 def get_cluster_details(params):
+    response = {}
     try:
         json_request = json.loads(params.body)
         response = {}
@@ -184,13 +191,15 @@ def get_cluster_details(params):
 
         return JsonResponse(response, safe=False)
     except Exception as e:
-        Response({"status": False,
-                  "message": "",
-                  "error": e.message})
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
 
 
 @api_view(["POST"])
 def create_kubernetes_cluster(params):
+    response = {}
     try:
         json_request = json.loads(params.body)
         response = {}
@@ -232,13 +241,15 @@ def create_kubernetes_cluster(params):
 
         return JsonResponse(response, safe=False)
     except Exception as e:
-        Response({"status": False,
-                  "message": "",
-                  "error": e.message})
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
 
 
 @api_view(["DELETE"])
 def delete_kubernetes_cluster(params):
+    response = {}
     try:
         json_request = json.loads(params.body)
         response = {}
@@ -280,14 +291,15 @@ def delete_kubernetes_cluster(params):
 
         return JsonResponse(response, safe=False)
     except Exception as e:
-        print e.message
-        Response({"status": False,
-                  "message": "",
-                  "error": e.message})
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
 
 
 @api_view(["GET"])
 def get_cluster_config(params):
+    response = {}
     try:
         json_request = json.loads(params.body)
         response = {}
@@ -326,19 +338,22 @@ def get_cluster_config(params):
 
         return JsonResponse(response, safe=False)
     except Exception as e:
-        Response({"status": False,
-                  "message": "",
-                  "error": e.message})
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
 
 
 @api_view(["GET"])
 def get_all_clusters(params):
+    response = {}
     try:
+
         json_request = json.loads(params.body)
         response = {}
         error = False
-        valid_keys_json = ['access_key', 'secret_key']
-
+        valid_keys_json = ['user_id']
+        providers_cluster_info_list = []
         for key in valid_keys_json:
             if key not in json_request:
                 error = True
@@ -349,37 +364,49 @@ def get_all_clusters(params):
                     error = True
                     response.update({key: {"error": "Value " + key + " is not found"}})
         if not error:
-            access_key = json_request["access_key"]
-            secret_key = json_request["secret_key"]
-            alibaba_cs = Alibaba_CS(
-                ali_access_key=access_key,
-                ali_secret_key=secret_key,
-                region_id='default'
-            )
+            user_id = json_request["user_id"]
 
-            flag, cluster_details_list = alibaba_cs.get_all_clusters()
+            access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            access_key_secret_key_list = json.loads(access_key_secret_key_list)
+            unique_access_key_list = []
+            if list(access_key_secret_key_list).__len__() > 0:
+                for access_key_secret_key in access_key_secret_key_list:
 
-            if flag:
-                response.update({"status": flag,
-                                 "cluster_details_list": cluster_details_list,
-                                 "error": ""})
-            else:
-                response.update({"status": flag,
-                                 "cluster_details_list": "",
-                                 "error": cluster_details_list})
-
-        return JsonResponse(response, safe=False)
+                    if access_key_secret_key['client_id'] in unique_access_key_list:
+                        continue
+                    else:
+                        unique_access_key_list.append(access_key_secret_key['client_id'])
+            for access_key in unique_access_key_list:
+                providers_cluster_info = {}
+                for access_key_secret_key in access_key_secret_key_list:
+                    if access_key_secret_key['client_id'] is access_key:
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=access_key,
+                            ali_secret_key=access_key_secret_key['client_secret'],
+                            region_id='default'
+                        )
+                        flag, cluster_details_list = alibaba_cs.get_all_clusters()
+                        if flag:
+                            # access_key_secret_key['name']: cluster_details_list
+                            providers_cluster_info.update(
+                                {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
+                        else:
+                            raise Exception(cluster_details_list)
+                providers_cluster_info_list.append(providers_cluster_info)
+        final_dict = {"provider_cluster_list": providers_cluster_info_list}
+        return JsonResponse(final_dict, safe=False)
     except Exception as e:
-        Response({"status": False,
-                  "message": "",
-                  "error": e.message})
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
 
 
 @api_view(["GET"])
 def get_cluster_status(params):
+    response = {}
     try:
         json_request = json.loads(params.body)
-        response = {}
         error = False
         valid_keys_json = ['access_key', 'secret_key', 'cluster_id']
 
@@ -415,6 +442,7 @@ def get_cluster_status(params):
 
         return JsonResponse(response, safe=False)
     except Exception as e:
-        Response({"status": False,
-                  "message": "",
-                  "error": e.message})
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
