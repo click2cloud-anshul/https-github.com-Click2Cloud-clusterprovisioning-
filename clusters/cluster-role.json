@@ -6,11 +6,6 @@
     },
     "rules": [
         {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
-            ],
             "apiGroups": [
                 ""
             ],
@@ -21,27 +16,52 @@
                 "pods/proxy",
                 "secrets",
                 "services/proxy"
-            ]
-        },
-        {
-            "verbs": [
-                "impersonate"
             ],
-            "apiGroups": [
-                ""
-            ],
-            "resources": [
-                "serviceaccounts"
-            ]
-        },
-        {
             "verbs": [
                 "create",
                 "delete",
                 "deletecollection",
+                "get",
+                "list",
                 "patch",
-                "update"
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "authentication.k8s.io"
             ],
+            "resources": [
+                "serviceaccounts",
+                "users",
+                "groups"
+            ],
+            "verbs": [
+                "impersonate"
+            ]
+        },
+        {
+            "apiGroups": [
+                "authentication.k8s.io"
+            ],
+            "resources": [
+                "serviceaccounts",
+                "users",
+                "groups"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
             "apiGroups": [
                 ""
             ],
@@ -51,16 +71,19 @@
                 "pods/exec",
                 "pods/portforward",
                 "pods/proxy"
-            ]
-        },
-        {
+            ],
             "verbs": [
                 "create",
                 "delete",
                 "deletecollection",
+                "get",
+                "list",
                 "patch",
-                "update"
-            ],
+                "update",
+                "watch"
+            ]
+        },
+        {
             "apiGroups": [
                 ""
             ],
@@ -74,16 +97,19 @@
                 "serviceaccounts",
                 "services",
                 "services/proxy"
-            ]
-        },
-        {
+            ],
             "verbs": [
                 "create",
                 "delete",
                 "deletecollection",
+                "get",
+                "list",
                 "patch",
-                "update"
-            ],
+                "update",
+                "watch"
+            ]
+        },
+        {
             "apiGroups": [
                 "apps"
             ],
@@ -96,47 +122,56 @@
                 "replicasets/scale",
                 "statefulsets",
                 "statefulsets/scale"
-            ]
-        },
-        {
+            ],
             "verbs": [
                 "create",
                 "delete",
                 "deletecollection",
+                "get",
+                "list",
                 "patch",
-                "update"
-            ],
+                "update",
+                "watch"
+            ]
+        },
+        {
             "apiGroups": [
                 "autoscaling"
             ],
             "resources": [
                 "horizontalpodautoscalers"
-            ]
-        },
-        {
+            ],
             "verbs": [
                 "create",
                 "delete",
                 "deletecollection",
+                "get",
+                "list",
                 "patch",
-                "update"
-            ],
+                "update",
+                "watch"
+            ]
+        },
+        {
             "apiGroups": [
                 "batch"
             ],
             "resources": [
                 "cronjobs",
                 "jobs"
-            ]
-        },
-        {
+            ],
             "verbs": [
                 "create",
                 "delete",
                 "deletecollection",
+                "get",
+                "list",
                 "patch",
-                "update"
-            ],
+                "update",
+                "watch"
+            ]
+        },
+        {
             "apiGroups": [
                 "extensions"
             ],
@@ -150,45 +185,56 @@
                 "replicasets",
                 "replicasets/scale",
                 "replicationcontrollers/scale"
-            ]
-        },
-        {
+            ],
             "verbs": [
                 "create",
                 "delete",
                 "deletecollection",
+                "get",
+                "list",
                 "patch",
-                "update"
-            ],
+                "update",
+                "watch"
+            ]
+        },
+        {
             "apiGroups": [
                 "policy"
             ],
             "resources": [
                 "poddisruptionbudgets"
-            ]
-        },
-        {
+            ],
             "verbs": [
                 "create",
                 "delete",
                 "deletecollection",
+                "get",
+                "list",
                 "patch",
-                "update"
-            ],
+                "update",
+                "watch"
+            ]
+        },
+        {
             "apiGroups": [
                 "networking.k8s.io"
             ],
             "resources": [
                 "ingresses",
                 "networkpolicies"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
             ]
         },
         {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
-            ],
             "apiGroups": [
                 ""
             ],
@@ -201,14 +247,19 @@
                 "replicationcontrollers/scale",
                 "serviceaccounts",
                 "services"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
             ]
         },
         {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
-            ],
             "apiGroups": [
                 ""
             ],
@@ -222,27 +273,37 @@
                 "replicationcontrollers/status",
                 "resourcequotas",
                 "resourcequotas/status"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
             ]
         },
         {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
-            ],
             "apiGroups": [
                 ""
             ],
             "resources": [
                 "namespaces"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
             ]
         },
         {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
-            ],
             "apiGroups": [
                 "apps"
             ],
@@ -255,41 +316,56 @@
                 "replicasets/scale",
                 "statefulsets",
                 "statefulsets/scale"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
             ]
         },
         {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
-            ],
             "apiGroups": [
                 "autoscaling"
             ],
             "resources": [
                 "horizontalpodautoscalers"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
             ]
         },
         {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
-            ],
             "apiGroups": [
                 "batch"
             ],
             "resources": [
                 "cronjobs",
                 "jobs"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
             ]
         },
         {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
-            ],
             "apiGroups": [
                 "extensions"
             ],
@@ -302,47 +378,7 @@
                 "replicasets",
                 "replicasets/scale",
                 "replicationcontrollers/scale"
-            ]
-        },
-        {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
             ],
-            "apiGroups": [
-                "policy"
-            ],
-            "resources": [
-                "poddisruptionbudgets"
-            ]
-        },
-        {
-            "verbs": [
-                "get",
-                "list",
-                "watch"
-            ],
-            "apiGroups": [
-                "networking.k8s.io"
-            ],
-            "resources": [
-                "ingresses",
-                "networkpolicies"
-            ]
-        },
-        {
-            "verbs": [
-                "create"
-            ],
-            "apiGroups": [
-                "authorization.k8s.io"
-            ],
-            "resources": [
-                "localsubjectaccessreviews"
-            ]
-        },
-        {
             "verbs": [
                 "create",
                 "delete",
@@ -352,13 +388,479 @@
                 "patch",
                 "update",
                 "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "policy"
             ],
+            "resources": [
+                "poddisruptionbudgets"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "networking.k8s.io"
+            ],
+            "resources": [
+                "ingresses",
+                "networkpolicies"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "authorization.k8s.io"
+            ],
+            "resources": [
+                "localsubjectaccessreviews"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
             "apiGroups": [
                 "rbac.authorization.k8s.io"
             ],
             "resources": [
                 "rolebindings",
                 "roles"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "authentication.k8s.io"
+            ],
+            "resources": [
+                "tokenreviews"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "authorization.k8s.io"
+            ],
+            "resources": [
+                "localsubjectaccessreviews",
+                "subjectaccessreviews"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "services"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "nodes"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "nodes/status"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "nodes"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "events"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "pods"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "pods"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "pods/status"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "pods/eviction"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "configmaps",
+                "secrets"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "persistentvolumeclaims",
+                "persistentvolumes"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "endpoints"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "certificates.k8s.io"
+            ],
+            "resources": [
+                "certificatesigningrequests"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "persistentvolumeclaims/status"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                ""
+            ],
+            "resources": [
+                "serviceaccounts/token"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "storage.k8s.io"
+            ],
+            "resources": [
+                "volumeattachments"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "storage.k8s.io"
+            ],
+            "resources": [
+                "csidrivers"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "storage.k8s.io"
+            ],
+            "resources": [
+                "csinodes"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "coordination.k8s.io"
+            ],
+            "resources": [
+                "leases"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "node.k8s.io"
+            ],
+            "resources": [
+                "runtimeclasses"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
             ]
         }
     ]

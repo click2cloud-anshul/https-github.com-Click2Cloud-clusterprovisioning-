@@ -27,3 +27,4 @@ aliyun-python-sdk-rds
 aliyun-python-sdk-slb
 aliyun-python-sdk-vpc
 aliyun-python-sdk-ros
+kubernetes

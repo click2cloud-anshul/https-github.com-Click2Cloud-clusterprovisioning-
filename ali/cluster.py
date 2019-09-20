@@ -331,7 +331,495 @@ class Alibaba_CS:
                                     return False, 'Max retries exceeded with url ' + cluster_url
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "pod_list": "", "cluster_name": cluster['name']}
+                                               "pod_list": {}, "cluster_name": cluster['name']}
+                            cluster_details_list.append(cluster_details)
+                    else:
+                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
+                else:
+                    cluster_details_list.append(cluster_details)
+            return True, cluster_details_list
+        except Exception as e:
+            return False, e.message
+
+    def get_nodes(self):
+        cluster_details_list = []
+        try:
+            cluster_list_for_pods = []
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+
+            response = client.do_action_with_exception(request)
+            describe_clusters_response = json.loads(response)
+
+            if len(describe_clusters_response) == 0:
+                return True, []
+            for cluster in describe_clusters_response:
+                cluster_details = {}
+                if str(cluster['state']).__contains__('running'):
+                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
+                    request = CommonRequest()
+                    request.set_accept_format('json')
+                    request.set_method('GET')
+                    request.set_protocol_type('https')  # https | http
+                    request.set_domain('cs.aliyuncs.com')
+                    request.set_version('2015-12-15')
+                    request.add_query_param('RegionId', "default")
+                    request.add_header('Content-Type', 'application/json')
+                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
+                    body = ''''''
+                    request.set_content(body.encode('utf-8'))
+                    response = client1.do_action_with_exception(request)
+                    cluster_config = json.loads(response)
+                    self.clusters_folder_directory = os.getcwd()
+                    if 'config' in cluster_config:
+                        os.chdir(self.clusters_folder_directory)
+                        # json.dumps(yaml.load(cluster_config['config']))
+                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
+                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
+                        kube_one = K8s(configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
+                                                                          cluster['cluster_id'], r"config"))
+                        flag, token = kube_one.get_token(self.clusters_folder_directory)
+                        os.chdir(self.clusters_folder_directory)
+                        if flag:
+                            cluster_url = None
+                            cluster_config = json.loads(cluster_config)
+                            for p in cluster_config['clusters']:
+                                cluster_info_token = p['cluster']
+                                cluster_url = cluster_info_token['server']
+                            if cluster_url is not None:
+                                try:
+                                    url = cluster_url + "/api/v1/nodes"
+                                    headers = {
+                                        'Authorization': "Bearer " + token,
+                                    }
+                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                    cluster_details = {"cluster_id": cluster['cluster_id'],
+                                                       "node_list": json.loads(response.text),
+                                                       "cluster_name": cluster['name']}
+                                    cluster_details_list.append(cluster_details)
+                                except Exception as e:
+                                    return False, 'Max retries exceeded with url ' + cluster_url
+                        else:
+                            cluster_details = {"cluster_id": cluster['cluster_id'],
+                                               "node_list": {}, "cluster_name": cluster['name']}
+                            cluster_details_list.append(cluster_details)
+                    else:
+                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
+                else:
+                    cluster_details_list.append(cluster_details)
+            return True, cluster_details_list
+        except Exception as e:
+            return False, e.message
+
+    def get_deployments(self):
+        cluster_details_list = []
+        try:
+            cluster_list_for_pods = []
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+
+            response = client.do_action_with_exception(request)
+            describe_clusters_response = json.loads(response)
+
+            if len(describe_clusters_response) == 0:
+                return True, []
+            for cluster in describe_clusters_response:
+                cluster_details = {}
+                if str(cluster['state']).__contains__('running'):
+                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
+                    request = CommonRequest()
+                    request.set_accept_format('json')
+                    request.set_method('GET')
+                    request.set_protocol_type('https')  # https | http
+                    request.set_domain('cs.aliyuncs.com')
+                    request.set_version('2015-12-15')
+                    request.add_query_param('RegionId', "default")
+                    request.add_header('Content-Type', 'application/json')
+                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
+                    body = ''''''
+                    request.set_content(body.encode('utf-8'))
+                    response = client1.do_action_with_exception(request)
+                    cluster_config = json.loads(response)
+                    self.clusters_folder_directory = os.getcwd()
+                    if 'config' in cluster_config:
+                        os.chdir(self.clusters_folder_directory)
+                        # json.dumps(yaml.load(cluster_config['config']))
+                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
+                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
+                        kube_one = K8s(configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
+                                                                          cluster['cluster_id'], r"config"))
+                        flag, token = kube_one.get_token(self.clusters_folder_directory)
+                        os.chdir(self.clusters_folder_directory)
+                        if flag:
+                            cluster_url = None
+                            cluster_config = json.loads(cluster_config)
+                            for p in cluster_config['clusters']:
+                                cluster_info_token = p['cluster']
+                                cluster_url = cluster_info_token['server']
+                            if cluster_url is not None:
+                                try:
+                                    url = cluster_url + "/apis/apps/v1/deployments"
+                                    headers = {
+                                        'Authorization': "Bearer " + token,
+                                    }
+                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                    cluster_details = {"cluster_id": cluster['cluster_id'],
+                                                       "deployment_list": json.loads(response.text),
+                                                       "cluster_name": cluster['name']}
+                                    cluster_details_list.append(cluster_details)
+                                except Exception as e:
+                                    return False, 'Max retries exceeded with url ' + cluster_url
+                        else:
+                            cluster_details = {"cluster_id": cluster['cluster_id'],
+                                               "deployment_list": {}, "cluster_name": cluster['name']}
+                            cluster_details_list.append(cluster_details)
+                    else:
+                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
+                else:
+                    cluster_details_list.append(cluster_details)
+            return True, cluster_details_list
+        except Exception as e:
+            return False, e.message
+
+    def get_namespaces(self):
+        cluster_details_list = []
+        try:
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+
+            response = client.do_action_with_exception(request)
+            describe_clusters_response = json.loads(response)
+
+            if len(describe_clusters_response) == 0:
+                return True, []
+            for cluster in describe_clusters_response:
+                cluster_details = {}
+                if str(cluster['state']).__contains__('running'):
+                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
+                    request = CommonRequest()
+                    request.set_accept_format('json')
+                    request.set_method('GET')
+                    request.set_protocol_type('https')  # https | http
+                    request.set_domain('cs.aliyuncs.com')
+                    request.set_version('2015-12-15')
+                    request.add_query_param('RegionId', "default")
+                    request.add_header('Content-Type', 'application/json')
+                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
+                    body = ''''''
+                    request.set_content(body.encode('utf-8'))
+                    response = client1.do_action_with_exception(request)
+                    cluster_config = json.loads(response)
+                    self.clusters_folder_directory = os.getcwd()
+                    if 'config' in cluster_config:
+                        os.chdir(self.clusters_folder_directory)
+                        # json.dumps(yaml.load(cluster_config['config']))
+                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
+                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
+                        kube_one = K8s(configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
+                                                                          cluster['cluster_id'], r"config"))
+                        flag, token = kube_one.get_token(self.clusters_folder_directory)
+                        os.chdir(self.clusters_folder_directory)
+                        if flag:
+                            cluster_url = None
+                            cluster_config = json.loads(cluster_config)
+                            for p in cluster_config['clusters']:
+                                cluster_info_token = p['cluster']
+                                cluster_url = cluster_info_token['server']
+                            if cluster_url is not None:
+                                try:
+                                    url = cluster_url + "/api/v1/namespaces"
+                                    headers = {
+                                        'Authorization': "Bearer " + token,
+                                    }
+                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                    cluster_details = {"cluster_id": cluster['cluster_id'],
+                                                       "namespace_list": json.loads(response.text),
+                                                       "cluster_name": cluster['name']}
+                                    cluster_details_list.append(cluster_details)
+                                except Exception as e:
+                                    return False, 'Max retries exceeded with url ' + cluster_url
+                        else:
+                            cluster_details = {"cluster_id": cluster['cluster_id'],
+                                               "namespace_list": {}, "cluster_name": cluster['name']}
+                            cluster_details_list.append(cluster_details)
+                    else:
+                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
+                else:
+                    cluster_details_list.append(cluster_details)
+            return True, cluster_details_list
+        except Exception as e:
+            return False, e.message
+
+    def get_persistent_volume_claims(self):
+        cluster_details_list = []
+        try:
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+
+            response = client.do_action_with_exception(request)
+            describe_clusters_response = json.loads(response)
+
+            if len(describe_clusters_response) == 0:
+                return True, []
+            for cluster in describe_clusters_response:
+                cluster_details = {}
+                if str(cluster['state']).__contains__('running'):
+                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
+                    request = CommonRequest()
+                    request.set_accept_format('json')
+                    request.set_method('GET')
+                    request.set_protocol_type('https')  # https | http
+                    request.set_domain('cs.aliyuncs.com')
+                    request.set_version('2015-12-15')
+                    request.add_query_param('RegionId', "default")
+                    request.add_header('Content-Type', 'application/json')
+                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
+                    body = ''''''
+                    request.set_content(body.encode('utf-8'))
+                    response = client1.do_action_with_exception(request)
+                    cluster_config = json.loads(response)
+                    self.clusters_folder_directory = os.getcwd()
+                    if 'config' in cluster_config:
+                        os.chdir(self.clusters_folder_directory)
+                        # json.dumps(yaml.load(cluster_config['config']))
+                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
+                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
+                        kube_one = K8s(configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
+                                                                          cluster['cluster_id'], r"config"))
+                        flag, token = kube_one.get_token(self.clusters_folder_directory)
+                        os.chdir(self.clusters_folder_directory)
+                        if flag:
+                            cluster_url = None
+                            cluster_config = json.loads(cluster_config)
+                            for p in cluster_config['clusters']:
+                                cluster_info_token = p['cluster']
+                                cluster_url = cluster_info_token['server']
+                            if cluster_url is not None:
+                                try:
+                                    url = cluster_url + "/api/v1/persistentvolumeclaims"
+                                    headers = {
+                                        'Authorization': "Bearer " + token,
+                                    }
+                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                    cluster_details = {"cluster_id": cluster['cluster_id'],
+                                                       "persistent_volume_claims_list": json.loads(response.text),
+                                                       "cluster_name": cluster['name']}
+                                    cluster_details_list.append(cluster_details)
+                                except Exception as e:
+                                    return False, 'Max retries exceeded with url ' + cluster_url
+                        else:
+                            cluster_details = {"cluster_id": cluster['cluster_id'],
+                                               "persistent_volume_claims_list": {}, "cluster_name": cluster['name']}
+                            cluster_details_list.append(cluster_details)
+                    else:
+                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
+                else:
+                    cluster_details_list.append(cluster_details)
+            return True, cluster_details_list
+        except Exception as e:
+            return False, e.message
+
+    def get_persistent_volumes(self):
+        cluster_details_list = []
+        try:
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+
+            response = client.do_action_with_exception(request)
+            describe_clusters_response = json.loads(response)
+
+            if len(describe_clusters_response) == 0:
+                return True, []
+            for cluster in describe_clusters_response:
+                cluster_details = {}
+                if str(cluster['state']).__contains__('running'):
+                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
+                    request = CommonRequest()
+                    request.set_accept_format('json')
+                    request.set_method('GET')
+                    request.set_protocol_type('https')  # https | http
+                    request.set_domain('cs.aliyuncs.com')
+                    request.set_version('2015-12-15')
+                    request.add_query_param('RegionId', "default")
+                    request.add_header('Content-Type', 'application/json')
+                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
+                    body = ''''''
+                    request.set_content(body.encode('utf-8'))
+                    response = client1.do_action_with_exception(request)
+                    cluster_config = json.loads(response)
+                    self.clusters_folder_directory = os.getcwd()
+                    if 'config' in cluster_config:
+                        os.chdir(self.clusters_folder_directory)
+                        # json.dumps(yaml.load(cluster_config['config']))
+                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
+                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
+                        kube_one = K8s(configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
+                                                                          cluster['cluster_id'], r"config"))
+                        flag, token = kube_one.get_token(self.clusters_folder_directory)
+                        os.chdir(self.clusters_folder_directory)
+                        if flag:
+                            cluster_url = None
+                            cluster_config = json.loads(cluster_config)
+                            for p in cluster_config['clusters']:
+                                cluster_info_token = p['cluster']
+                                cluster_url = cluster_info_token['server']
+                            if cluster_url is not None:
+                                try:
+                                    url = cluster_url + "/api/v1/persistentvolumes"
+                                    headers = {
+                                        'Authorization': "Bearer " + token,
+                                    }
+                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                    cluster_details = {"cluster_id": cluster['cluster_id'],
+                                                       "persistent_volumes_list": json.loads(response.text),
+                                                       "cluster_name": cluster['name']}
+                                    cluster_details_list.append(cluster_details)
+                                except Exception as e:
+                                    return False, 'Max retries exceeded with url ' + cluster_url
+                        else:
+                            cluster_details = {"cluster_id": cluster['cluster_id'],
+                                               "persistent_volumes_list": {}, "cluster_name": cluster['name']}
+                            cluster_details_list.append(cluster_details)
+                    else:
+                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
+                else:
+                    cluster_details_list.append(cluster_details)
+            return True, cluster_details_list
+        except Exception as e:
+            return False, e.message
+
+    def get_services(self):
+        cluster_details_list = []
+        try:
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+
+            response = client.do_action_with_exception(request)
+            describe_clusters_response = json.loads(response)
+
+            if len(describe_clusters_response) == 0:
+                return True, []
+            for cluster in describe_clusters_response:
+                cluster_details = {}
+                if str(cluster['state']).__contains__('running'):
+                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
+                    request = CommonRequest()
+                    request.set_accept_format('json')
+                    request.set_method('GET')
+                    request.set_protocol_type('https')  # https | http
+                    request.set_domain('cs.aliyuncs.com')
+                    request.set_version('2015-12-15')
+                    request.add_query_param('RegionId', "default")
+                    request.add_header('Content-Type', 'application/json')
+                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
+                    body = ''''''
+                    request.set_content(body.encode('utf-8'))
+                    response = client1.do_action_with_exception(request)
+                    cluster_config = json.loads(response)
+                    self.clusters_folder_directory = os.getcwd()
+                    if 'config' in cluster_config:
+                        os.chdir(self.clusters_folder_directory)
+                        # json.dumps(yaml.load(cluster_config['config']))
+                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
+                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
+                        kube_one = K8s(configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
+                                                                          cluster['cluster_id'], r"config"))
+                        flag, token = kube_one.get_token(self.clusters_folder_directory)
+                        os.chdir(self.clusters_folder_directory)
+                        if flag:
+                            cluster_url = None
+                            cluster_config = json.loads(cluster_config)
+                            for p in cluster_config['clusters']:
+                                cluster_info_token = p['cluster']
+                                cluster_url = cluster_info_token['server']
+                            if cluster_url is not None:
+                                try:
+                                    url = cluster_url + "/api/v1/services"
+                                    headers = {
+                                        'Authorization': "Bearer " + token,
+                                    }
+                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                    cluster_details = {"cluster_id": cluster['cluster_id'],
+                                                       "services_list": json.loads(response.text),
+                                                       "cluster_name": cluster['name']}
+                                    cluster_details_list.append(cluster_details)
+                                except Exception as e:
+                                    return False, 'Max retries exceeded with url ' + cluster_url
+                        else:
+                            cluster_details = {"cluster_id": cluster['cluster_id'],
+                                               "services_list": {}, "cluster_name": cluster['name']}
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']

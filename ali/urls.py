@@ -12,4 +12,10 @@ urlpatterns = [
     url(r'^createKubernetesCluster', views.create_kubernetes_cluster),
     url(r'^deleteKubernetesCluster', views.delete_kubernetes_cluster),
     url(r'^getAllPods', views.get_all_pods),
+    url(r'^getAllNodes', views.get_all_nodes),
+    url(r'^getAllDeployments', views.get_all_deployments),
+    url(r'^getAllNamespaces', views.get_all_namespaces),
+    url(r'^getAllPersistentVolumeClaims', views.get_all_persistent_volume_claims),
+    url(r'^getAllPersistentVolumes', views.get_all_persistent_volumes),
+    url(r'^getAllServices', views.get_all_services),
 ]
