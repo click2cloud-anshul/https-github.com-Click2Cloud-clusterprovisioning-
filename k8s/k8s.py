@@ -117,7 +117,7 @@ class K8s(object):
                     if str(secret._name).__contains__('click2cloud-sa-admin'):
                         secret = self.clientCoreV1.read_namespaced_secret(str(secret._name), namespace)
                         return True, base64.b64decode(secret.data['token'])
-        except Exception as e:
+        except Exception:
             return False, 'Unable to create token'
 
 
@@ -132,6 +132,8 @@ def check_for_token(kube_one=None):
                 secret = kube_one.clientCoreV1.read_namespaced_secret(str(secret._name), namespace)
                 return 2, base64.b64decode(secret.data['token'])
     except Exception as e:
-        if str(json.loads(e.body)['message']).__contains__('"click2cloud-sa-admin" not found'):
-            return 0, None
-        return 1, None
+        try:
+            if str(json.loads(e.body)['message']).__contains__('"click2cloud-sa-admin" not found'):
+                return 0, None
+        except Exception:
+            return 1, None

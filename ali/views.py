@@ -12,45 +12,166 @@ from ali.cluster import *
 
 
 @api_view(["GET"])
-def alibaba_region_list(params):
+def alibaba_instance_list(params):
     response = {}
     try:
         json_request = json.loads(params.body)
-
+        response = {}
         error = False
-        valid_keys_json = ['access_key', 'secret_key']
+        valid_keys_json = ['user_id', 'provider_id', 'region_id', 'zone_id_list']
 
         for key in valid_keys_json:
             if key not in json_request:
                 error = True
                 response.update({key: {"error": "key " + key + " is not found"}})
             else:
+                if key.__contains__("request_body"):
+                    continue
+                json_request[key] = str(str(json_request[key]).strip())
+                if (len(json_request[key])) == 0:
+                    error = True
+                    response.update({key: {"error": "Value " + key + " is not found"}})
+        if not error:
+            user_id = json_request["user_id"]
+            provider_id = json_request["provider_id"]
+            region_id = json_request["region_id"]
+            try:
+                user_id = int(user_id)
+                provider_id = int(provider_id)
+                user_id = str(user_id)
+                provider_id = str(provider_id)
+            except Exception as e:
+                raise e.message
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            if flag:
+                access_key_secret_key_list = json.loads(access_key_secret_key_list)
+                unique_access_key_list = []
+                if list(access_key_secret_key_list).__len__() > 0:
+                    for access_key_secret_key in access_key_secret_key_list:
+
+                        if access_key_secret_key['client_id'] in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key['client_id'])
+                for access_key in unique_access_key_list:
+
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key['client_id'] is access_key and access_key_secret_key['id'] is int(
+                                provider_id):
+                            alibaba_ecs = Alibaba_ECS(
+                                ali_access_key=access_key_secret_key['client_id'],
+                                ali_secret_key=access_key_secret_key['client_secret'],
+                                region_id=region_id
+                            )
+                            zone_id_list = eval(json_request['zone_id_list'])
+
+                            flag, instance_list = alibaba_ecs.instance_list(zone_id_list)
+
+                            if flag:
+                                if flag:
+                                    response.update({"status": flag,
+                                                     "instance_list": instance_list,
+                                                     "error": ""})
+                                else:
+                                    response.update({"status": flag,
+                                                     "instance_list": instance_list,
+                                                     "error": "Cluster created but error in db"})
+                            else:
+                                if str(instance_list).__contains__('No such'):
+                                    response.update({"status": flag,
+                                                     "instance_list": "",
+                                                     "error": instance_list})
+                                    break
+                                split_str = str(instance_list).split('ServerResponseBody: ')
+                                response.update({"status": flag,
+                                                 "instance_list": "",
+                                                 "error": json.loads((split_str.__getitem__(1)))})
+            else:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
+        return JsonResponse(response, safe=False)
+
+    except Exception as e:
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
+
+
+@api_view(["GET"])
+def alibaba_region_list(params):
+    response = {}
+    try:
+        json_request = json.loads(params.body)
+        response = {}
+        error = False
+        valid_keys_json = ['user_id', 'provider_id']
+
+        for key in valid_keys_json:
+            if key not in json_request:
+                error = True
+                response.update({key: {"error": "key " + key + " is not found"}})
+            else:
+                if key.__contains__("request_body"):
+                    continue
                 json_request[key] = str(json_request[key].strip())
                 if (len(json_request[key])) == 0:
                     error = True
                     response.update({key: {"error": "Value " + key + " is not found"}})
         if not error:
-            access_key = json_request["access_key"]
-            secret_key = json_request["secret_key"]
-
-            alibaba_ecs = Alibaba_ECS(
-                ali_access_key=access_key,
-                ali_secret_key=secret_key,
-                region_id=None,
-            )
-
-            flag, regions = alibaba_ecs.list_regions()
-
+            user_id = json_request["user_id"]
+            provider_id = json_request["provider_id"]
+            try:
+                user_id = int(user_id)
+                provider_id = int(provider_id)
+                user_id = str(user_id)
+                provider_id = str(provider_id)
+            except Exception as e:
+                raise e.message
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
             if flag:
-                response.update({"status": flag,
-                                 "regionList": regions,
-                                 "error": ""})
-            else:
-                response.update({"status": flag,
-                                 "regionList": "",
-                                 "error": regions})
+                access_key_secret_key_list = json.loads(access_key_secret_key_list)
+                unique_access_key_list = []
+                if list(access_key_secret_key_list).__len__() > 0:
+                    for access_key_secret_key in access_key_secret_key_list:
 
+                        if access_key_secret_key['client_id'] in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key['client_id'])
+                for access_key in unique_access_key_list:
+
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key['client_id'] is access_key and access_key_secret_key['id'] is int(
+                                provider_id):
+                            alibaba_ecs = Alibaba_ECS(
+                                ali_access_key=access_key_secret_key['client_id'],
+                                ali_secret_key=access_key_secret_key['client_secret'],
+                                region_id='default'
+                            )
+                            flag, region_list = alibaba_ecs.list_regions()
+
+                            if flag:
+                                if flag:
+                                    response.update({"status": flag,
+                                                     "region_list": region_list,
+                                                     "error": ""})
+                                else:
+                                    response.update({"status": flag,
+                                                     "region_list": region_list,
+                                                     "error": "Cluster created but error in db"})
+                            else:
+                                split_str = str(region_list).split('ServerResponseBody: ')
+                                response.update({"status": flag,
+                                                 "region_list": "",
+                                                 "error": json.loads((split_str.__getitem__(1)))})
+            else:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
         return JsonResponse(response, safe=False)
+
     except Exception as e:
         response.update({"status": False,
                          "message": "",
@@ -65,39 +186,73 @@ def alibaba_key_pair_list(params):
         json_request = json.loads(params.body)
         response = {}
         error = False
-        valid_keys_json = ['access_key', 'secret_key', 'region_id']
+        valid_keys_json = ['user_id', 'provider_id', 'region_id']
 
         for key in valid_keys_json:
             if key not in json_request:
                 error = True
                 response.update({key: {"error": "key " + key + " is not found"}})
             else:
+                if key.__contains__("request_body"):
+                    continue
                 json_request[key] = str(json_request[key].strip())
                 if (len(json_request[key])) == 0:
                     error = True
                     response.update({key: {"error": "Value " + key + " is not found"}})
         if not error:
-            access_key = json_request["access_key"]
-            secret_key = json_request["secret_key"]
+            user_id = json_request["user_id"]
+            provider_id = json_request["provider_id"]
             region_id = json_request["region_id"]
-            alibaba_ecs = Alibaba_ECS(
-                ali_access_key=access_key,
-                ali_secret_key=secret_key,
-                region_id=region_id,
-            )
-
-            flag, key_pairs = alibaba_ecs.key_pairs_list()
-
+            try:
+                user_id = int(user_id)
+                provider_id = int(provider_id)
+                user_id = str(user_id)
+                provider_id = str(provider_id)
+            except Exception as e:
+                raise e.message
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
             if flag:
-                response.update({"status": flag,
-                                 "key_pairs_list": key_pairs,
-                                 "error": ""})
-            else:
-                response.update({"status": flag,
-                                 "key_pairs_list": "",
-                                 "error": key_pairs})
+                access_key_secret_key_list = json.loads(access_key_secret_key_list)
+                unique_access_key_list = []
+                if list(access_key_secret_key_list).__len__() > 0:
+                    for access_key_secret_key in access_key_secret_key_list:
 
+                        if access_key_secret_key['client_id'] in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key['client_id'])
+                for access_key in unique_access_key_list:
+
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key['client_id'] is access_key and access_key_secret_key['id'] is int(
+                                provider_id):
+                            alibaba_ecs = Alibaba_ECS(
+                                ali_access_key=access_key_secret_key['client_id'],
+                                ali_secret_key=access_key_secret_key['client_secret'],
+                                region_id=region_id
+                            )
+                            flag, key_pairs_list = alibaba_ecs.key_pairs_list()
+
+                            if flag:
+                                if flag:
+                                    response.update({"status": flag,
+                                                     "key_pairs_list": key_pairs_list,
+                                                     "error": ""})
+                                else:
+                                    response.update({"status": flag,
+                                                     "key_pairs_list": key_pairs_list,
+                                                     "error": "Cluster created but error in db"})
+                            else:
+                                split_str = str(key_pairs_list).split('ServerResponseBody: ')
+                                response.update({"status": flag,
+                                                 "key_pairs_list": "",
+                                                 "error": json.loads((split_str.__getitem__(1)))})
+            else:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
         return JsonResponse(response, safe=False)
+
     except Exception as e:
         response.update({"status": False,
                          "message": "",
@@ -112,39 +267,73 @@ def get_vpc_list(params):
         json_request = json.loads(params.body)
         response = {}
         error = False
-        valid_keys_json = ['access_key', 'secret_key', 'region_id']
+        valid_keys_json = ['user_id', 'provider_id', 'region_id']
 
         for key in valid_keys_json:
             if key not in json_request:
                 error = True
                 response.update({key: {"error": "key " + key + " is not found"}})
             else:
+                if key.__contains__("request_body"):
+                    continue
                 json_request[key] = str(json_request[key].strip())
                 if (len(json_request[key])) == 0:
                     error = True
                     response.update({key: {"error": "Value " + key + " is not found"}})
         if not error:
-            access_key = json_request["access_key"]
-            secret_key = json_request["secret_key"]
+            user_id = json_request["user_id"]
+            provider_id = json_request["provider_id"]
             region_id = json_request["region_id"]
-            alibaba_ecs = Alibaba_ECS(
-                ali_access_key=access_key,
-                ali_secret_key=secret_key,
-                region_id=region_id,
-            )
-
-            flag, vpc_list = alibaba_ecs.vpc_list()
-
+            try:
+                user_id = int(user_id)
+                provider_id = int(provider_id)
+                user_id = str(user_id)
+                provider_id = str(provider_id)
+            except Exception as e:
+                raise e.message
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
             if flag:
-                response.update({"status": flag,
-                                 "vpc_list": vpc_list,
-                                 "error": ""})
-            else:
-                response.update({"status": flag,
-                                 "vpc_list": "",
-                                 "error": vpc_list})
+                access_key_secret_key_list = json.loads(access_key_secret_key_list)
+                unique_access_key_list = []
+                if list(access_key_secret_key_list).__len__() > 0:
+                    for access_key_secret_key in access_key_secret_key_list:
 
+                        if access_key_secret_key['client_id'] in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key['client_id'])
+                for access_key in unique_access_key_list:
+
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key['client_id'] is access_key and access_key_secret_key['id'] is int(
+                                provider_id):
+                            alibaba_ecs = Alibaba_ECS(
+                                ali_access_key=access_key_secret_key['client_id'],
+                                ali_secret_key=access_key_secret_key['client_secret'],
+                                region_id=region_id
+                            )
+                            flag, vpc_list = alibaba_ecs.vpc_list()
+
+                            if flag:
+                                if flag:
+                                    response.update({"status": flag,
+                                                     "vpc_list": vpc_list,
+                                                     "error": ""})
+                                else:
+                                    response.update({"status": flag,
+                                                     "vpc_list": vpc_list,
+                                                     "error": "Cluster created but error in db"})
+                            else:
+                                split_str = str(vpc_list).split('ServerResponseBody: ')
+                                response.update({"status": flag,
+                                                 "vpc_list": "",
+                                                 "error": json.loads((split_str.__getitem__(1)))})
+            else:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
         return JsonResponse(response, safe=False)
+
     except Exception as e:
         response.update({"status": False,
                          "message": "",
@@ -159,39 +348,71 @@ def get_cluster_details(params):
         json_request = json.loads(params.body)
         response = {}
         error = False
-        valid_keys_json = ['access_key', 'secret_key', 'cluster_id']
+        valid_keys_json = ['user_id', 'provider_id', 'cluster_id']
 
         for key in valid_keys_json:
             if key not in json_request:
                 error = True
                 response.update({key: {"error": "key " + key + " is not found"}})
             else:
+                if key.__contains__("request_body"):
+                    continue
                 json_request[key] = str(json_request[key].strip())
                 if (len(json_request[key])) == 0:
                     error = True
                     response.update({key: {"error": "Value " + key + " is not found"}})
         if not error:
-            access_key = json_request["access_key"]
-            secret_key = json_request["secret_key"]
+            cursor = None
+            user_id = json_request["user_id"]
+            provider_id = json_request["provider_id"]
             cluster_id = json_request["cluster_id"]
-            alibaba_cs = Alibaba_CS(
-                ali_access_key=access_key,
-                ali_secret_key=secret_key,
-                region_id='default'
-            )
-
-            flag, cluster_details = alibaba_cs.cluster_details(cluster_id)
-
+            try:
+                user_id = int(user_id)
+                provider_id = int(provider_id)
+                user_id = str(user_id)
+                provider_id = str(provider_id)
+                cluster_id = str(cluster_id)
+                cursor = connection.cursor()
+            except Exception as e:
+                raise e.message
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
             if flag:
-                response.update({"status": flag,
-                                 "cluster_details": cluster_details,
-                                 "error": ""})
-            else:
-                response.update({"status": flag,
-                                 "cluster_details": "",
-                                 "error": cluster_details})
+                access_key_secret_key_list = json.loads(access_key_secret_key_list)
+                unique_access_key_list = []
+                if list(access_key_secret_key_list).__len__() > 0:
+                    for access_key_secret_key in access_key_secret_key_list:
 
+                        if access_key_secret_key['client_id'] in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key['client_id'])
+                for access_key in unique_access_key_list:
+
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key['client_id'] is access_key and access_key_secret_key['id'] is int(
+                                provider_id):
+                            alibaba_cs = Alibaba_CS(
+                                ali_access_key=access_key_secret_key['client_id'],
+                                ali_secret_key=access_key_secret_key['client_secret'],
+                                region_id='default'
+                            )
+                            flag, cluster_details = alibaba_cs.cluster_details(cluster_id)
+
+                            if flag:
+                                response.update({"status": flag,
+                                                 "cluster_details": cluster_details,
+                                                 "error": ""})
+                            else:
+                                split_str = str(cluster_details).split('ServerResponseBody: ')
+                                response.update({"status": flag,
+                                                 "cluster_details": "",
+                                                 "error": json.loads((split_str.__getitem__(1)))})
+            else:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
         return JsonResponse(response, safe=False)
+
     except Exception as e:
         response.update({"status": False,
                          "message": "",
@@ -220,7 +441,6 @@ def create_kubernetes_cluster(params):
                     error = True
                     response.update({key: {"error": "Value " + key + " is not found"}})
         if not error:
-            cursor = None
             user_id = json_request["user_id"]
             provider_id = json_request["provider_id"]
             try:
@@ -228,7 +448,6 @@ def create_kubernetes_cluster(params):
                 provider_id = int(provider_id)
                 user_id = str(user_id)
                 provider_id = str(provider_id)
-                cursor = connection.cursor()
             except Exception as e:
                 raise e.message
             flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
@@ -242,12 +461,12 @@ def create_kubernetes_cluster(params):
                             continue
                         else:
                             unique_access_key_list.append(access_key_secret_key['client_id'])
-                new_cluster_details = {}
+                access_flag = True
                 for access_key in unique_access_key_list:
-
                     for access_key_secret_key in access_key_secret_key_list:
                         if access_key_secret_key['client_id'] is access_key and access_key_secret_key['id'] is int(
                                 provider_id):
+                            access_flag = False
                             request_body = json_request["request_body"]
                             alibaba_cs = Alibaba_CS(
                                 ali_access_key=access_key_secret_key['client_id'],
@@ -279,6 +498,10 @@ def create_kubernetes_cluster(params):
                                 response.update({"status": flag,
                                                  "new_cluster_details": "",
                                                  "error": json.loads((split_str.__getitem__(1)))})
+                if access_flag:
+                    response.update({"status": False,
+                                     "message": "",
+                                     "error": "Please provide valid provider_id"})
             else:
                 response.update({"status": False,
                                  "message": "",
@@ -312,57 +535,7 @@ def delete_kubernetes_cluster(params):
                 if (len(json_request[key])) == 0:
                     error = True
                     response.update({key: {"error": "Value " + key + " is not found"}})
-        #             flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
-        #             if flag:
-        #                 access_key_secret_key_list = json.loads(access_key_secret_key_list)
-        #                 unique_access_key_list = []
-        #                 if list(access_key_secret_key_list).__len__() > 0:
-        #                     for access_key_secret_key in access_key_secret_key_list:
-        # 
-        #                         if access_key_secret_key['client_id'] in unique_access_key_list:
-        #                             continue
-        #                         else:
-        #                             unique_access_key_list.append(access_key_secret_key['client_id'])
-        #                 new_cluster_details = {}
-        #                 for access_key in unique_access_key_list:
-        # 
-        #                     for access_key_secret_key in access_key_secret_key_list:
-        #                         if access_key_secret_key['client_id'] is access_key and access_key_secret_key['id'] is int(
-        #                                 provider_id):
-        #                             request_body = json_request["request_body"]
-        #                             alibaba_cs = Alibaba_CS(
-        #                                 ali_access_key=access_key_secret_key['client_id'],
-        #                                 ali_secret_key=access_key_secret_key['client_secret'],
-        #                                 region_id='default'
-        #                             )
-        #                             flag, new_cluster_details = alibaba_cs.create_cluster(request_body)
-        # 
-        #                             if flag:
-        #                                 created_at = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-        #                                 cmd = "INSERT INTO public._cb_cp_cluster_details(user_id, provider_id, cluster_id, cluster_details, status, created_at, operation) VALUES ({user_id},{provider_id},'{cluster_id}','{cluster_details}','{status}','{created_at}','{operation}')".format(
-        #                                     user_id=int(user_id), provider_id=int(provider_id),
-        #                                     cluster_id=str(new_cluster_details['cluster_id']),
-        #                                     cluster_details=json.dumps(request_body),
-        #                                     status=str('Initiated'), created_at=str(created_at),
-        #                                     operation=str('created from cloudbrain'))
-        #                                 cursor.execute(cmd)
-        #                                 connection.commit()
-        #                                 response.update({"status": flag,
-        #                                                  "new_cluster_details": new_cluster_details,
-        #                                                  "error": ""})
-        #                                 return JsonResponse(response, safe=False)
-        #                             else:
-        #                                 split_str = str(new_cluster_details).split('ServerResponseBody: ')
-        #                                 response.update({"status": flag,
-        #                                                  "new_cluster_details": "",
-        #                                                  "error": json.loads((split_str.__getitem__(1)))})
-        #             else:
-        #                 response.update({"status": False,
-        #                                  "message": "",
-        #                                  "error": access_key_secret_key_list})
-        #         return JsonResponse(response, safe=False)
         if not error:
-            cursor = None
             cluster_id = json_request["cluster_id"]
             user_id = json_request["user_id"]
             provider_id = json_request["provider_id"]
@@ -371,106 +544,64 @@ def delete_kubernetes_cluster(params):
                 provider_id = int(provider_id)
                 user_id = str(user_id)
                 provider_id = str(provider_id)
-                cursor = connection.cursor()
             except Exception as e:
                 raise e.message
-            flag, cluster_id_list = get_cluster_id_list(user_id, provider_id)
-
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
             if flag:
-                if cluster_id in cluster_id_list:
-                    flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
-                    if flag:
-                        access_key_secret_key_list = json.loads(access_key_secret_key_list)
-                        unique_access_key_list = []
-                        if list(access_key_secret_key_list).__len__() > 0:
-                            for access_key_secret_key in access_key_secret_key_list:
+                access_key_secret_key_list = json.loads(access_key_secret_key_list)
+                unique_access_key_list = []
+                if list(access_key_secret_key_list).__len__() > 0:
+                    for access_key_secret_key in access_key_secret_key_list:
 
-                                if access_key_secret_key['client_id'] in unique_access_key_list:
-                                    continue
-                                else:
-                                    unique_access_key_list.append(access_key_secret_key['client_id'])
-                        for access_key in unique_access_key_list:
-                            for access_key_secret_key in access_key_secret_key_list:
-                                if access_key_secret_key['client_id'] is access_key and access_key_secret_key[
-                                    'id'] is int(provider_id):
-                                    alibaba_cs = Alibaba_CS(
-                                        ali_access_key=access_key_secret_key['client_id'],
-                                        ali_secret_key=access_key_secret_key['client_secret'],
-                                        region_id='default'
-                                    )
-                                    flag, cluster_details = alibaba_cs.cluster_details(cluster_id)
+                        if access_key_secret_key['client_id'] in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key['client_id'])
+                for access_key in unique_access_key_list:
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key['client_id'] is access_key and access_key_secret_key['id'] is int(
+                                provider_id):
+                            alibaba_cs = Alibaba_CS(
+                                ali_access_key=access_key_secret_key['client_id'],
+                                ali_secret_key=access_key_secret_key['client_secret'],
+                                region_id='default'
+                            )
+                            flag, cluster_details = alibaba_cs.cluster_details(cluster_id)
+                            if flag:
+                                flag, deleted_cluster_details = alibaba_cs.delete_cluster(cluster_id)
+                                if flag:
+                                    new_params = {}
+                                    new_params['is_insert'] = True
+                                    new_params['user_id'] = int(user_id)
+                                    new_params['provider_id'] = int(provider_id)
+                                    new_params['cluster_id'] = str(cluster_id)
+                                    new_params['cluster_details'] = json.dumps(cluster_details)
+                                    new_params['status'] = 'Deleted'
+                                    new_params['operation'] = deleted_cluster_details['message']
+                                    flag, msg = insert_or_update_cluster_details(new_params)
                                     if flag:
-                                        flag, deleted_cluster_details = alibaba_cs.delete_cluster(cluster_id)
-                                        if flag:
-                                            new_params = {}
-                                            new_params['is_insert'] = True
-                                            new_params['user_id'] = int(user_id)
-                                            new_params['provider_id'] = int(provider_id)
-                                            new_params['cluster_id'] = str(cluster_id)
-                                            new_params['cluster_details'] = json.dumps(cluster_details)
-                                            new_params['status'] = 'Deleted'
-                                            new_params['operation'] = 'Deleted from cloudbrain'
-                                            flag, msg = insert_or_update_cluster_details(new_params)
-                                            if flag:
-                                                response.update({"status": flag,
-                                                                 "message": new_params['operation'],
-                                                                 "error": ""})
-                                            else:
-                                                response.update({"status": flag,
-                                                                 "new_cluster_details": new_params['operation'],
-                                                                 "error": "Cluster deleted but error in db"})
-                                        else:
-                                            split_str = str(deleted_cluster_details).split('ServerResponseBody: ')
-                                            response.update({"status": flag,
-                                                             "message": "",
-                                                             "error": json.loads((split_str.__getitem__(1)))})
+                                        response.update({"status": flag,
+                                                         "message": deleted_cluster_details['message'],
+                                                         "error": ""})
                                     else:
-                                        print
-                                        # flag, deleted_cluster_details = alibaba_cs.delete_cluster(cluster_id)
-                                    # if flag:
-                                    #     response.update({"status": flag,
-                                    #                      "message": deleted_cluster_details,
-                                    #                      "error": ""})
-                                    # update_cluster_status_to_delete
-
-                                    # params = {"user_id": user_id,
-                                    #           "provider_id": provider_id,
-                                    #           "cluster_id": cluster_id,
-                                    #           "cluster_details": cluster_detail,
-                                    #           "created_at": str(
-                                    #               time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())),
-                                    #           "operation": deleted_cluster_details,
-                                    #           "status": "Deleted"}
-                                    # update_cluster_status()
-
-                                    # else:
-                                    #     split_str = str(deleted_cluster_details).split('ServerResponseBody: ')
-                                    #     response.update({"status": flag,
-                                    #                      "message": "",
-                                    #                      "error": json.loads((split_str.__getitem__(1)))})
-
-                                    # update_cluster_status_to_delete
-                else:
-                    print
+                                        response.update({"status": flag,
+                                                         "deleted_cluster_details": deleted_cluster_details['message'],
+                                                         "error": "Cluster deleted but error in db"})
+                                else:
+                                    split_str = str(deleted_cluster_details).split('ServerResponseBody: ')
+                                    response.update({"status": flag,
+                                                     "message": "",
+                                                     "error": json.loads((split_str.__getitem__(1)))})
+                            else:
+                                split_str = str(cluster_details).split('ServerResponseBody: ')
+                                response.update({"status": flag,
+                                                 "message": "",
+                                                 "error": json.loads((split_str.__getitem__(1)))})
             else:
-                print
-
-                # alibaba_cs = Alibaba_CS(
-            #     ali_access_key=access_key,
-            #     ali_secret_key=secret_key,
-            #     region_id='default'
-            # )
-            # flag, deleted_cluster_details = alibaba_cs.delete_cluster(cluster_id)
-            # 
-            # if flag:
-            #     response.update({"status": flag,
-            #                      "message": deleted_cluster_details,
-            #                      "error": ""})
-            # else:
-            #     split_str = str(deleted_cluster_details).split('ServerResponseBody: ')
-            #     response.update({"status": flag,
-            #                      "message": "",
-            #                      "error": json.loads((split_str.__getitem__(1)))})
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
+                return JsonResponse(response, safe=False)
 
         return JsonResponse(response, safe=False)
     except Exception as e:
@@ -522,7 +653,7 @@ def get_all_cluster_config(params):
                                     ali_secret_key=access_key_secret_key['client_secret'],
                                     region_id='default'
                                 )
-                                flag, cluster_details_list = alibaba_cs.get_cluster_config()
+                                flag, cluster_details_list = alibaba_cs.get_all_cluster_config()
                                 if flag:
                                     providers_cluster_config_info.update(
                                         {"provider_name": access_key_secret_key['name'],
@@ -587,7 +718,6 @@ def get_all_clusters(params):
                         )
                         flag, cluster_details_list = alibaba_cs.get_all_clusters()
                         if flag:
-                            # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update(
                                 {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
                         else:
@@ -595,52 +725,6 @@ def get_all_clusters(params):
                 providers_cluster_info_list.append(providers_cluster_info)
         final_dict = {"provider_cluster_list": providers_cluster_info_list}
         return JsonResponse(final_dict, safe=False)
-    except Exception as e:
-        response.update({"status": False,
-                         "message": "",
-                         "error": e.message})
-        return JsonResponse(response, safe=False)
-
-
-@api_view(["GET"])
-def get_cluster_status(params):
-    response = {}
-    try:
-        json_request = json.loads(params.body)
-        error = False
-        valid_keys_json = ['access_key', 'secret_key', 'cluster_id']
-
-        for key in valid_keys_json:
-            if key not in json_request:
-                error = True
-                response.update({key: {"error": "key " + key + " is not found"}})
-            else:
-                json_request[key] = str(json_request[key].strip())
-                if (len(json_request[key])) == 0:
-                    error = True
-                    response.update({key: {"error": "Value " + key + " is not found"}})
-        if not error:
-            access_key = json_request["access_key"]
-            secret_key = json_request["secret_key"]
-            cluster_id = json_request["cluster_id"]
-            alibaba_cs = Alibaba_CS(
-                ali_access_key=access_key,
-                ali_secret_key=secret_key,
-                region_id='default'
-            )
-
-            flag, cluster_status = alibaba_cs.get_cluster_status(cluster_id)
-
-            if flag:
-                response.update({"status": flag,
-                                 "cluster_status": cluster_status,
-                                 "error": ""})
-            else:
-                response.update({"status": flag,
-                                 "cluster_status": "",
-                                 "error": cluster_status})
-
-        return JsonResponse(response, safe=False)
     except Exception as e:
         response.update({"status": False,
                          "message": "",
@@ -693,6 +777,68 @@ def get_all_pods(params):
                             region_id='default'
                         )
                         flag, cluster_details_list = alibaba_cs.get_pods()
+                        if flag:
+                            # access_key_secret_key['name']: cluster_details_list
+                            providers_cluster_info.update(
+                                {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
+                        else:
+                            raise Exception(cluster_details_list)
+
+                providers_cluster_info_list.append(providers_cluster_info)
+        final_dict = {"provider_cluster_list": providers_cluster_info_list}
+        return JsonResponse(final_dict, safe=False)
+    except Exception as e:
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
+
+
+@api_view(["GET"])
+def get_all_secrets(params):
+    response = {}
+    try:
+        json_request = json.loads(params.body)
+        response = {}
+        error = False
+        valid_keys_json = ['user_id']
+        providers_cluster_info_list = []
+        for key in valid_keys_json:
+            if key not in json_request:
+                error = True
+                response.update({key: {"error": "key " + key + " is not found"}})
+            else:
+                json_request[key] = str(json_request[key].strip())
+                if (len(json_request[key])) == 0:
+                    error = True
+                    response.update({key: {"error": "Value " + key + " is not found"}})
+        if not error:
+            user_id = json_request["user_id"]
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            if not flag:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
+                return JsonResponse(response, safe=False)
+            access_key_secret_key_list = json.loads(access_key_secret_key_list)
+            unique_access_key_list = []
+            if list(access_key_secret_key_list).__len__() > 0:
+                for access_key_secret_key in access_key_secret_key_list:
+
+                    if access_key_secret_key['client_id'] in unique_access_key_list:
+                        continue
+                    else:
+                        unique_access_key_list.append(access_key_secret_key['client_id'])
+            for access_key in unique_access_key_list:
+                providers_cluster_info = {}
+                for access_key_secret_key in access_key_secret_key_list:
+                    if access_key_secret_key['client_id'] is access_key:
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=access_key,
+                            ali_secret_key=access_key_secret_key['client_secret'],
+                            region_id='default'
+                        )
+                        flag, cluster_details_list = alibaba_cs.get_secrets()
                         if flag:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update(
@@ -1018,8 +1164,8 @@ def get_all_persistent_volumes(params):
                          "message": "",
                          "error": e.message})
         return JsonResponse(response, safe=False)
-    
-    
+
+
 @api_view(["GET"])
 def get_all_services(params):
     response = {}
@@ -1067,6 +1213,250 @@ def get_all_services(params):
                         flag, cluster_details_list = alibaba_cs.get_services()
                         if flag:
                             # access_key_secret_key['name']: cluster_details_list
+                            providers_cluster_info.update(
+                                {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
+                        else:
+                            raise Exception(cluster_details_list)
+
+                providers_cluster_info_list.append(providers_cluster_info)
+        final_dict = {"provider_cluster_list": providers_cluster_info_list}
+        return JsonResponse(final_dict, safe=False)
+    except Exception as e:
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
+
+
+@api_view(["GET"])
+def get_all_roles(params):
+    response = {}
+    try:
+        json_request = json.loads(params.body)
+        response = {}
+        error = False
+        valid_keys_json = ['user_id']
+        providers_cluster_info_list = []
+        for key in valid_keys_json:
+            if key not in json_request:
+                error = True
+                response.update({key: {"error": "key " + key + " is not found"}})
+            else:
+                json_request[key] = str(json_request[key].strip())
+                if (len(json_request[key])) == 0:
+                    error = True
+                    response.update({key: {"error": "Value " + key + " is not found"}})
+        if not error:
+            user_id = json_request["user_id"]
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            if not flag:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
+                return JsonResponse(response, safe=False)
+            access_key_secret_key_list = json.loads(access_key_secret_key_list)
+            unique_access_key_list = []
+            if list(access_key_secret_key_list).__len__() > 0:
+                for access_key_secret_key in access_key_secret_key_list:
+
+                    if access_key_secret_key['client_id'] in unique_access_key_list:
+                        continue
+                    else:
+                        unique_access_key_list.append(access_key_secret_key['client_id'])
+            for access_key in unique_access_key_list:
+                providers_cluster_info = {}
+                for access_key_secret_key in access_key_secret_key_list:
+                    if access_key_secret_key['client_id'] is access_key:
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=access_key,
+                            ali_secret_key=access_key_secret_key['client_secret'],
+                            region_id='default'
+                        )
+                        flag, cluster_details_list = alibaba_cs.get_roles()
+                        if flag:
+                            providers_cluster_info.update(
+                                {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
+                        else:
+                            raise Exception(cluster_details_list)
+
+                providers_cluster_info_list.append(providers_cluster_info)
+        final_dict = {"provider_cluster_list": providers_cluster_info_list}
+        return JsonResponse(final_dict, safe=False)
+    except Exception as e:
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
+
+
+@api_view(["GET"])
+def get_all_storageclasses(params):
+    response = {}
+    try:
+        json_request = json.loads(params.body)
+        response = {}
+        error = False
+        valid_keys_json = ['user_id']
+        providers_cluster_info_list = []
+        for key in valid_keys_json:
+            if key not in json_request:
+                error = True
+                response.update({key: {"error": "key " + key + " is not found"}})
+            else:
+                json_request[key] = str(json_request[key].strip())
+                if (len(json_request[key])) == 0:
+                    error = True
+                    response.update({key: {"error": "Value " + key + " is not found"}})
+        if not error:
+            user_id = json_request["user_id"]
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            if not flag:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
+                return JsonResponse(response, safe=False)
+            access_key_secret_key_list = json.loads(access_key_secret_key_list)
+            unique_access_key_list = []
+            if list(access_key_secret_key_list).__len__() > 0:
+                for access_key_secret_key in access_key_secret_key_list:
+
+                    if access_key_secret_key['client_id'] in unique_access_key_list:
+                        continue
+                    else:
+                        unique_access_key_list.append(access_key_secret_key['client_id'])
+            for access_key in unique_access_key_list:
+                providers_cluster_info = {}
+                for access_key_secret_key in access_key_secret_key_list:
+                    if access_key_secret_key['client_id'] is access_key:
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=access_key,
+                            ali_secret_key=access_key_secret_key['client_secret'],
+                            region_id='default'
+                        )
+                        flag, cluster_details_list = alibaba_cs.get_storageclasses()
+                        if flag:
+                            providers_cluster_info.update(
+                                {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
+                        else:
+                            raise Exception(cluster_details_list)
+
+                providers_cluster_info_list.append(providers_cluster_info)
+        final_dict = {"provider_cluster_list": providers_cluster_info_list}
+        return JsonResponse(final_dict, safe=False)
+    except Exception as e:
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
+
+
+@api_view(["GET"])
+def get_all_cronjobs(params):
+    response = {}
+    try:
+        json_request = json.loads(params.body)
+        response = {}
+        error = False
+        valid_keys_json = ['user_id']
+        providers_cluster_info_list = []
+        for key in valid_keys_json:
+            if key not in json_request:
+                error = True
+                response.update({key: {"error": "key " + key + " is not found"}})
+            else:
+                json_request[key] = str(json_request[key].strip())
+                if (len(json_request[key])) == 0:
+                    error = True
+                    response.update({key: {"error": "Value " + key + " is not found"}})
+        if not error:
+            user_id = json_request["user_id"]
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            if not flag:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
+                return JsonResponse(response, safe=False)
+            access_key_secret_key_list = json.loads(access_key_secret_key_list)
+            unique_access_key_list = []
+            if list(access_key_secret_key_list).__len__() > 0:
+                for access_key_secret_key in access_key_secret_key_list:
+
+                    if access_key_secret_key['client_id'] in unique_access_key_list:
+                        continue
+                    else:
+                        unique_access_key_list.append(access_key_secret_key['client_id'])
+            for access_key in unique_access_key_list:
+                providers_cluster_info = {}
+                for access_key_secret_key in access_key_secret_key_list:
+                    if access_key_secret_key['client_id'] is access_key:
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=access_key,
+                            ali_secret_key=access_key_secret_key['client_secret'],
+                            region_id='default'
+                        )
+                        flag, cluster_details_list = alibaba_cs.get_cronjobs()
+                        if flag:
+                            providers_cluster_info.update(
+                                {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
+                        else:
+                            raise Exception(cluster_details_list)
+
+                providers_cluster_info_list.append(providers_cluster_info)
+        final_dict = {"provider_cluster_list": providers_cluster_info_list}
+        return JsonResponse(final_dict, safe=False)
+    except Exception as e:
+        response.update({"status": False,
+                         "message": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
+
+
+@api_view(["GET"])
+def get_all_jobs(params):
+    response = {}
+    try:
+        json_request = json.loads(params.body)
+        response = {}
+        error = False
+        valid_keys_json = ['user_id']
+        providers_cluster_info_list = []
+        for key in valid_keys_json:
+            if key not in json_request:
+                error = True
+                response.update({key: {"error": "key " + key + " is not found"}})
+            else:
+                json_request[key] = str(json_request[key].strip())
+                if (len(json_request[key])) == 0:
+                    error = True
+                    response.update({key: {"error": "Value " + key + " is not found"}})
+        if not error:
+            user_id = json_request["user_id"]
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            if not flag:
+                response.update({"status": False,
+                                 "message": "",
+                                 "error": access_key_secret_key_list})
+                return JsonResponse(response, safe=False)
+            access_key_secret_key_list = json.loads(access_key_secret_key_list)
+            unique_access_key_list = []
+            if list(access_key_secret_key_list).__len__() > 0:
+                for access_key_secret_key in access_key_secret_key_list:
+
+                    if access_key_secret_key['client_id'] in unique_access_key_list:
+                        continue
+                    else:
+                        unique_access_key_list.append(access_key_secret_key['client_id'])
+            for access_key in unique_access_key_list:
+                providers_cluster_info = {}
+                for access_key_secret_key in access_key_secret_key_list:
+                    if access_key_secret_key['client_id'] is access_key:
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=access_key,
+                            ali_secret_key=access_key_secret_key['client_secret'],
+                            region_id='default'
+                        )
+                        flag, cluster_details_list = alibaba_cs.get_jobs()
+                        if flag:
                             providers_cluster_info.update(
                                 {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
                         else:

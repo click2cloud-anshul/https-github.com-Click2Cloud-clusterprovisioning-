@@ -69,11 +69,12 @@ def get_access_key_secret_key_list(user_id=None):
         rows = cursor.fetchall()
         result = rows[0][0]
         result_json = json.dumps(result)
-
+        if result is None:
+            return False, "Please provide valid user_id"
         return True, result_json
     except Exception as ex:
         # add exception details to logger
-        return False, result
+        return False, ex.message
 
     finally:
         #  if cursor is not None close the cursor
@@ -113,10 +114,6 @@ def get_cluster_id_list(user_id=None, provider_id=None):
         #  if cursor is not None close the cursor
         if cursor is not None:
             cursor.close()
-
-
-def update_cluster_status(params=None):
-    print
 
 
 def insert_or_update_cluster_details(params=None):
@@ -198,3 +195,33 @@ def get_platform():
         return sys.platform
 
     return platforms[sys.platform]
+
+
+def get_db_info_using_cluster_id(cluster_id=None):
+    cursor = None
+    record = None
+    try:
+
+        # create cursor for calling stored procedure
+        cursor = connection.cursor()
+
+        # create command to execute stored procedure
+        # cmd = "EXEC [dbo].[test_connection] @guid = 'test'"
+        sql_cmd = "SELECT * FROM public._cb_cp_cluster_details where cluster_id = '{cluster_id}'".format(
+            cluster_id=cluster_id)
+
+        record = None
+        cursor.execute(sql_cmd)
+        record = cursor.fetchall()
+        if record is not None:
+            if len(list(record)) > 0:
+                return True, record
+            return False, record
+        else:
+            return False, record
+    except Exception:
+        return False, record
+
+    finally:
+        if cursor is not None:
+            cursor.close()

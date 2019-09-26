@@ -451,7 +451,8 @@
             ],
             "resources": [
                 "rolebindings",
-                "roles"
+                "roles",
+                "clusterroles"
             ],
             "verbs": [
                 "create",
@@ -689,6 +690,24 @@
             "resources": [
                 "persistentvolumeclaims",
                 "persistentvolumes"
+            ],
+            "verbs": [
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "update",
+                "watch"
+            ]
+        },
+        {
+            "apiGroups": [
+                "storage.k8s.io"
+            ],
+            "resources": [
+                "storageclasses"
             ],
             "verbs": [
                 "create",
