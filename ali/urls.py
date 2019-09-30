@@ -6,7 +6,7 @@ urlpatterns = [
     url(r'^getInstanceList', views.alibaba_instance_list),
     url(r'^getKeyPairList', views.alibaba_key_pair_list),
     url(r'^getVPCList', views.get_vpc_list),
-    # url(r'^getClusterDetails', views.get_cluster_details),
+    url(r'^getClusterDetails', views.get_cluster_details),
     url(r'^getAllClusterConfig', views.get_all_cluster_config),
     url(r'^getAllClustersDetails', views.get_all_clusters),
     url(r'^createKubernetesCluster', views.create_kubernetes_cluster),

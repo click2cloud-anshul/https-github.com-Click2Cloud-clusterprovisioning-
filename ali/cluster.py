@@ -242,53 +242,6 @@ class Alibaba_CS:
         except Exception as e:
             return False, e.message
 
-    def get_cluster_status(self, cluster_id=None):
-        try:
-
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-            cluster_info = {}
-            if len(describe_clusters_response) == 0:
-                return False, "No clusters are present in the current account"
-            for cluster in describe_clusters_response:
-                if cluster_id in cluster["cluster_id"]:
-                    cluster_status = {}
-                    if 'err_msg' in cluster:
-                        cluster_status = {"cluster_status": cluster["err_msg"]}
-                    else:
-                        cluster_status = {"cluster_status": cluster["state"]}
-                    cluster_info.update(cluster_status)
-                    request = GetStackRequest()
-                    request.set_accept_format('json')
-                    parameters = cluster["parameters"]
-                    request.set_StackId(str(parameters["ALIYUN::StackId"]))
-                    client = AcsClient(ak=self.access_key, secret=self.secret_key, region_id=str(cluster["region_id"]))
-                    get_stack_response = client.do_action_with_exception(request)
-                    stack_json = json.loads(get_stack_response)
-                    stack_status = []
-                    if 'Status' in stack_json:
-                        stack_status.append({"status": stack_json['Status']})
-                    if 'StatusReason' in stack_json:
-                        stack_status.append({"status_reason": stack_json['StatusReason']})
-                    if 'StackId' in stack_json:
-                        stack_status.append({"id": stack_json['StackId']})
-                    cluster_info.update({"stack_status": stack_status})
-            return True, cluster_info
-        except Exception as e:
-            return False, e.message
-
     def get_pods(self):
         cluster_details_list = []
         try:
@@ -329,7 +282,8 @@ class Alibaba_CS:
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
 
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -379,8 +333,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -425,7 +377,8 @@ class Alibaba_CS:
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
 
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -475,8 +428,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -520,7 +471,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -571,8 +523,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -617,7 +567,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -667,8 +618,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -712,7 +661,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -762,8 +712,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -807,7 +755,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -857,8 +806,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -902,7 +849,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -952,8 +900,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -997,7 +943,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -1047,8 +994,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -1092,7 +1037,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -1150,8 +1096,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -1195,7 +1139,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -1245,8 +1190,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -1290,7 +1233,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -1340,8 +1284,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -1385,7 +1327,8 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
                     client1 = AcsClient(self.access_key, self.secret_key, 'default')
                     request = CommonRequest()
                     request.set_accept_format('json')
@@ -1435,8 +1378,6 @@ class Alibaba_CS:
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-                else:
-                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
