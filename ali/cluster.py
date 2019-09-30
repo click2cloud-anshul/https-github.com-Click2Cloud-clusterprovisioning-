@@ -1,13 +1,6 @@
-import json
-import os
-from os import path
-
-import requests
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.request import CommonRequest
-from aliyunsdkecs.request.v20140526.DescribeInstancesRequest import DescribeInstancesRequest
 from aliyunsdkros.request.v20190910.GetStackRequest import GetStackRequest
-import yaml
 from k8s.k8s import *
 
 from common.apps import *
@@ -43,10 +36,12 @@ class Alibaba_CS:
             response = client.do_action_with_exception(request)
             describe_clusters_response = json.loads(response)
             cluster_info = {}
+            access_flag = True
             if len(describe_clusters_response) == 0:
                 return False, "No clusters are present in the current account"
             for cluster in describe_clusters_response:
                 if cluster_id in cluster["cluster_id"]:
+                    access_flag = False
                     cluster_info = {"cluster_info": cluster}
                     cluster_info.update(cluster_info)
                     request = GetStackRequest()
@@ -72,6 +67,9 @@ class Alibaba_CS:
                                     new_params['status'] = 'Running'
                                     new_params['operation'] = 'created from cloudbrain'
                                     insert_or_update_cluster_details(new_params)
+
+            if access_flag:
+                return False, 'Invalid cluster_id ' + cluster_id + ' provided.'
             return True, cluster_info
         except Exception as e:
             return False, e.message
@@ -315,18 +313,14 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/api/v1/pods"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                flag, details = kube_one.get_pods(cluster_url=cluster_url, token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "pod_list": json.loads(response.text),
+                                                       "pod_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "pod_list": {}, "cluster_name": cluster['name']}
@@ -410,18 +404,14 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/api/v1/secrets"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                flag, details = kube_one.get_secrets(cluster_url=cluster_url, token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "secret_list": json.loads(response.text),
+                                                       "secret_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "secret_list": {}, "cluster_name": cluster['name']}
@@ -504,19 +494,14 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/api/v1/nodes"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
-                                    node_list_response = json.loads(response.text)
+                                flag, details = kube_one.get_nodes(cluster_url=cluster_url, token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "node_list": node_list_response,
+                                                       "node_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "node_list": {}, "cluster_name": cluster['name']}
@@ -600,18 +585,14 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/apis/apps/v1/deployments"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                flag, details = kube_one.get_deployments(cluster_url=cluster_url, token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "deployment_list": json.loads(response.text),
+                                                       "deployment_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "deployment_list": {}, "cluster_name": cluster['name']}
@@ -694,18 +675,15 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/api/v1/namespaces"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                # namespace_list
+                                flag, details = kube_one.get_namespaces(cluster_url=cluster_url, token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "namespace_list": json.loads(response.text),
+                                                       "namespace_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "namespace_list": {}, "cluster_name": cluster['name']}
@@ -788,18 +766,16 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/api/v1/persistentvolumeclaims"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+
+                                flag, details = kube_one.get_persistent_volume_claims(cluster_url=cluster_url,
+                                                                                      token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "persistent_volume_claims_list": json.loads(response.text),
+                                                       "persistent_volume_claims_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "persistent_volume_claims_list": {}, "cluster_name": cluster['name']}
@@ -882,18 +858,15 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/api/v1/persistentvolumes"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                flag, details = kube_one.get_persistent_volumes(cluster_url=cluster_url,
+                                                                                token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "persistent_volumes_list": json.loads(response.text),
+                                                       "persistent_volumes_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "persistent_volumes_list": {}, "cluster_name": cluster['name']}
@@ -976,18 +949,15 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/api/v1/services"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                flag, details = kube_one.get_services(cluster_url=cluster_url,
+                                                                      token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "services_list": json.loads(response.text),
+                                                       "services_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "services_list": {}, "cluster_name": cluster['name']}
@@ -1069,27 +1039,18 @@ class Alibaba_CS:
                             for p in cluster_config['clusters']:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
+
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/apis/rbac.authorization.k8s.io/v1/roles"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
-                                    roles_json_response = json.loads(response.text)
-                                    url = cluster_url + "/apis/rbac.authorization.k8s.io/v1/clusterroles"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response1 = requests.request("GET", url, headers=headers, verify=False)
+                                flag, cluster_roles_list, roles_list = kube_one.get_roles(cluster_url=cluster_url,
+                                                                                          token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "cluster_roles_list": json.loads(response1.text),
-                                                       "roles_list": roles_json_response,
+                                                       "cluster_roles_list": cluster_roles_list,
+                                                       "roles_list": roles_list,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception as e:
-                                    print e.message
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "roles_list": {}, "cluster_name": cluster['name']}
@@ -1172,18 +1133,15 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/apis/storage.k8s.io/v1/storageclasses"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                flag, details = kube_one.get_storageclasses(cluster_url=cluster_url,
+                                                                                          token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "storageclasses_list": json.loads(response.text),
+                                                       "storageclasses_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "storageclasses_list": {}, "cluster_name": cluster['name']}
@@ -1266,18 +1224,15 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/apis/batch/v1beta1/cronjobs"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                flag, details = kube_one.get_cronjobs(cluster_url=cluster_url,
+                                                                                          token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "cronjob_list": json.loads(response.text),
+                                                       "cronjob_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "cronjob_list": {}, "cluster_name": cluster['name']}
@@ -1360,18 +1315,15 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                try:
-                                    url = cluster_url + "/apis/batch/v1/jobs"
-                                    headers = {
-                                        'Authorization': "Bearer " + token,
-                                    }
-                                    response = requests.request("GET", url, headers=headers, verify=False)
+                                flag, details = kube_one.get_jobs(cluster_url=cluster_url,
+                                                                                          token=token)
+                                if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "jobs_list": json.loads(response.text),
+                                                       "jobs_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
-                                except Exception:
-                                    return False, 'Max retries exceeded with url ' + cluster_url
+                                else:
+                                    return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
                                                "jobs_list": {}, "cluster_name": cluster['name']}

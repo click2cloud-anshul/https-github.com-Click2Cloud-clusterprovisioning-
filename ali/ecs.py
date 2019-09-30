@@ -2,8 +2,6 @@
 # coding=utf-8
 
 from aliyunsdkcore.client import AcsClient
-from aliyunsdkcore.acs_exception.exceptions import ClientException
-from aliyunsdkcore.acs_exception.exceptions import ServerException
 from aliyunsdkecs.request.v20140526.DescribeKeyPairsRequest import DescribeKeyPairsRequest
 from aliyunsdkcore import client
 from aliyunsdkecs.request.v20140526 import DescribeVpcsRequest
@@ -78,7 +76,8 @@ class Alibaba_ECS:
                                     if len(instance_type_family) == len(instance_family):
                                         Instance.append(str(instance_type))
                             # instance_list.update({instance_type_family: str(Instance)})
-                            instance_list.append({"instance_type_family": instance_type_family, "instance_list": Instance})
+                            instance_list.append(
+                                {"instance_type_family": instance_type_family, "instance_list": Instance})
                         # instance_zone_list.update({zone['ZoneId']: instance_list})
                         instance_zone_list.append({"zone_id": zone['ZoneId'], "instance_zone_list": instance_list})
             # print instance_zone_list
@@ -120,6 +119,8 @@ class Alibaba_ECS:
                          "instance_info_list": instance_new_list})
                 instance_new_zone_list.append(
                     {"zone_id": instance_zone['zone_id'], "instance_info_list": instance_info_list})
+            if len(instance_new_zone_list) is 0:
+                return False, 'No such zones exist.'
             return True, instance_new_zone_list
         except Exception as e:
             return False, e.message
@@ -237,17 +238,3 @@ class Alibaba_ECS:
             return True, vpc_list
         except Exception as e:
             return False, e.message
-
-    # def instance_type_list(self):
-    #     try:
-    #         instance_type_list = {}
-    #         conn = client.AcsClient(
-    #             ak=self.access_key,
-    #             secret=self.secret_key,
-    #             region_id=self.region_id,
-    #         )
-    #
-    #
-    #         return True
-    #     except Exception as e:
-    #         return False, e.message
