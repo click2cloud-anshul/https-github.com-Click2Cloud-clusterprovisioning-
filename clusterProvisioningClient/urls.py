@@ -19,5 +19,7 @@ from django.contrib import admin
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^api/ali/clusterprovisiong/', include('ali.urls')),
-    url(r'^api/common/', include('common.urls'))
+    url(r'^api/common/', include('common.urls')),
+    url(r'^cluster-provisioning/', include('cluster_provisioning.urls'))
+
 ]

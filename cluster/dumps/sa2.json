@@ -1,0 +1,8 @@
+{
+  "kind": "ServiceAccount",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "click2cloud-sa-inspector",
+    "namespace": "click2cloud-ns"
+  }
+}

@@ -15,3 +15,6 @@ venv/
 
 clusters/*
 !clusters/*.json
+
+cluster/dumps/*
+!cluster/dumps/*.json
