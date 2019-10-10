@@ -4,7 +4,7 @@ from os import path
 
 import requests
 import yaml
-from kubernetes import client
+from kubernetes import client, utils
 from kubernetes.client import Configuration
 from kubernetes.config import kube_config
 import os
@@ -51,6 +51,54 @@ class K8s(object):
         k8_loader.load_and_set(call_config)
         Configuration.set_default(call_config)
         return client.apis.RbacAuthorizationV1Api().create_cluster_role_binding_with_http_info(body=body)
+
+    def create_from_yaml(self, yaml_file=None):
+        k8_loader = kube_config.KubeConfigLoader(self.config)
+        call_config = type.__call__(Configuration)
+        try:
+            k8_loader.load_and_set(call_config)
+        except Exception as e:
+            return 0, e
+        Configuration.set_default(call_config)
+        k8s_client = client.api_client.ApiClient()
+        exception_list = []
+        names_list = []
+        try:
+            if os.stat(path.abspath(yaml_file)).st_size == 0 or not os.path.exists(path.abspath(yaml_file)):
+                raise Exception
+            with open(path.abspath(yaml_file)) as f:
+                yml_document_all = yaml.safe_load_all(f)
+                for yml_document in yml_document_all:
+                    if "List" in yml_document["kind"]:
+                        for yml_object in yml_document["items"]:
+                            names_list.append(yml_object['metadata']['name'])
+                    else:
+                        names_list.append(yml_document['metadata']['name'])
+            try:
+                utils.create_from_yaml(k8s_client=k8s_client, yaml_file=yaml_file)
+                return -1, exception_list, names_list
+            except Exception as e:
+                try:
+                    for api_exceptionse in e.api_exceptions:
+                        exception_from_create = json.loads(api_exceptionse.body)
+                        string_to_append = ''
+                        if 'details' in exception_from_create:
+                            if 'group' in exception_from_create['details']:
+                                string_to_append = exception_from_create['details']['group']
+                            if 'kind' in exception_from_create['details']:
+                                if len(string_to_append) > 0:
+                                    string_to_append = string_to_append + '.'
+                                string_to_append = string_to_append + exception_from_create['details']['kind']
+                            if 'name' in exception_from_create['details']:
+                                if len(string_to_append) > 0:
+                                    string_to_append = string_to_append + '.'
+                                string_to_append = string_to_append + exception_from_create['details']['name']
+                        exception_list.append(string_to_append + ' ' + exception_from_create['reason'])
+                    return 1, exception_list, names_list
+                except Exception:
+                    return 2, None, None
+        except Exception:
+            return 0, None, None
 
     def get_token(self, clusters_folder_directory=None):
 
@@ -260,6 +308,27 @@ class K8s(object):
             except Exception:
                 print False, 'Max retries exceeded with url ' + cluster_url
 
+    def get_daemon_sets(self, cluster_url=None, token=None):
+            try:
+                url = cluster_url + "/apis/apps/v1/daemonsets"
+                headers = {
+                    'Authorization': "Bearer " + token,
+                }
+                response = requests.request("GET", url, headers=headers, verify=False)
+                return True, json.loads(response.text)
+            except Exception:
+                print False, 'Max retries exceeded with url ' + cluster_url
+
+    def get_replica_sets(self, cluster_url=None, token=None):
+            try:
+                url = cluster_url + "/apis/apps/v1/replicasets"
+                headers = {
+                    'Authorization': "Bearer " + token,
+                }
+                response = requests.request("GET", url, headers=headers, verify=False)
+                return True, json.loads(response.text)
+            except Exception:
+                print False, 'Max retries exceeded with url ' + cluster_url
 
 def check_for_token(kube_one=None):
     try:

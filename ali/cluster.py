@@ -2,7 +2,7 @@ from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.request import CommonRequest
 from aliyunsdkros.request.v20190910.GetStackRequest import GetStackRequest
 from k8s.k8s import *
-
+from clusterProvisioningClient.settings import BASE_DIR
 from common.apps import *
 
 
@@ -46,6 +46,20 @@ class Alibaba_CS:
                     cluster_info.update(cluster_info)
                     request = GetStackRequest()
                     request.set_accept_format('json')
+                    if str(cluster['state']).__contains__('failed'):
+                        flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                        if flag:
+                            for cluster_info_db in cluster_info_db_list:
+                                if str(cluster_info_db[5]).__contains__('Initiated'):
+                                    new_params = {}
+                                    new_params['is_insert'] = False
+                                    new_params['user_id'] = cluster_info_db[1]
+                                    new_params['provider_id'] = cluster_info_db[2]
+                                    new_params['cluster_id'] = cluster_info_db[3]
+                                    new_params['cluster_details'] = json.dumps(cluster_info)
+                                    new_params['status'] = 'Failed'
+                                    new_params['operation'] = 'created from cloudbrain'
+                                    insert_or_update_cluster_details(new_params)
                     parameters = cluster["parameters"]
                     request.set_StackId(str(parameters["ALIYUN::StackId"]))
                     client = AcsClient(ak=self.access_key, secret=self.secret_key, region_id=str(cluster["region_id"]))
@@ -154,14 +168,6 @@ class Alibaba_CS:
                 cluster_details.update(cluster_info)
                 request = GetStackRequest()
                 request.set_accept_format('json')
-                parameters = cluster["parameters"]
-                request.set_StackId(str(parameters["ALIYUN::StackId"]))
-                client = AcsClient(ak=self.access_key, secret=self.secret_key, region_id=str(cluster["region_id"]))
-                get_stack_response = client.do_action_with_exception(request)
-                get_stack_json = json.loads(get_stack_response)
-                stack_info = {"stack_info": get_stack_json}
-                cluster_details.update(stack_info)
-                cluster_details_list.append(cluster_details)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -176,7 +182,39 @@ class Alibaba_CS:
                                 new_params['status'] = 'Running'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
-
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_info_db[4])
+                                new_params['status'] = 'Failed'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if 'parameters' in cluster and cluster["parameters"] is not None:
+                    parameters = cluster["parameters"]
+                    if "ALIYUN::StackId" in parameters:
+                        request.set_StackId(str(parameters["ALIYUN::StackId"]))
+                        client = AcsClient(ak=self.access_key, secret=self.secret_key,
+                                           region_id=str(cluster["region_id"]))
+                        get_stack_response = client.do_action_with_exception(request)
+                        get_stack_json = json.loads(get_stack_response)
+                        stack_info = {"stack_info": get_stack_json}
+                        cluster_details.update(stack_info)
+                        cluster_details_list.append(cluster_details)
+                    else:
+                        stack_info = {"stack_info": 'Stack Not Created'}
+                        cluster_details.update(stack_info)
+                        cluster_details_list.append(cluster_details)
+                else:
+                    stack_info = {"stack_info": 'Stack Not Created'}
+                    cluster_details.update(stack_info)
+                    cluster_details_list.append(cluster_details)
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
@@ -207,9 +245,26 @@ class Alibaba_CS:
             for cluster in describe_clusters_response:
                 cluster_id_list = {}
                 cluster_info = {}
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                cluster_details = {}
+                                cluster_info = {"cluster_info": cluster}
+                                cluster_details.update(cluster_info)
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
                 if str(cluster['state']).__contains__('running'):
                     cluster_info = {"cluster_id": cluster['cluster_id'], "cluster_name": cluster['name']}
-                cluster_id_list.update(cluster_info)
+                    cluster_id_list.update(cluster_info)
                 cluster_details_list.append(cluster_id_list)
             cluster_config_details_list = []
             if len(cluster_details_list) > 0:
@@ -265,6 +320,8 @@ class Alibaba_CS:
                 return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -277,6 +334,20 @@ class Alibaba_CS:
                                 new_params['cluster_id'] = cluster_info_db[3]
                                 new_params['cluster_details'] = json.dumps(cluster_details)
                                 new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
 
@@ -296,7 +367,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -356,6 +427,8 @@ class Alibaba_CS:
                 return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -368,6 +441,20 @@ class Alibaba_CS:
                                 new_params['cluster_id'] = cluster_info_db[3]
                                 new_params['cluster_details'] = json.dumps(cluster_details)
                                 new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
 
@@ -387,7 +474,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -447,6 +534,8 @@ class Alibaba_CS:
                 return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -459,6 +548,20 @@ class Alibaba_CS:
                                 new_params['cluster_id'] = cluster_info_db[3]
                                 new_params['cluster_details'] = json.dumps(cluster_details)
                                 new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
                 if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
@@ -477,7 +580,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -538,6 +641,8 @@ class Alibaba_CS:
                 return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -550,6 +655,20 @@ class Alibaba_CS:
                                 new_params['cluster_id'] = cluster_info_db[3]
                                 new_params['cluster_details'] = json.dumps(cluster_details)
                                 new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
                 if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
@@ -568,7 +687,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -658,7 +777,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -694,6 +813,8 @@ class Alibaba_CS:
         except Exception as e:
             return False, e.message
 
+
+
     def get_persistent_volume_claims(self):
         cluster_details_list = []
         try:
@@ -719,6 +840,8 @@ class Alibaba_CS:
                 return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -731,6 +854,20 @@ class Alibaba_CS:
                                 new_params['cluster_id'] = cluster_info_db[3]
                                 new_params['cluster_details'] = json.dumps(cluster_details)
                                 new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
                 if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
@@ -749,7 +886,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -811,6 +948,8 @@ class Alibaba_CS:
                 return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -823,6 +962,20 @@ class Alibaba_CS:
                                 new_params['cluster_id'] = cluster_info_db[3]
                                 new_params['cluster_details'] = json.dumps(cluster_details)
                                 new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
                 if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
@@ -841,7 +994,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -902,6 +1055,8 @@ class Alibaba_CS:
                 return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -914,6 +1069,20 @@ class Alibaba_CS:
                                 new_params['cluster_id'] = cluster_info_db[3]
                                 new_params['cluster_details'] = json.dumps(cluster_details)
                                 new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
                 if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
@@ -932,7 +1101,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -993,6 +1162,8 @@ class Alibaba_CS:
                 return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -1005,6 +1176,20 @@ class Alibaba_CS:
                                 new_params['cluster_id'] = cluster_info_db[3]
                                 new_params['cluster_details'] = json.dumps(cluster_details)
                                 new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
                 if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
@@ -1023,7 +1208,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -1116,7 +1301,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -1134,7 +1319,7 @@ class Alibaba_CS:
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
                                 flag, details = kube_one.get_storageclasses(cluster_url=cluster_url,
-                                                                                          token=token)
+                                                                            token=token)
                                 if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
                                                        "storageclasses_list": details,
@@ -1177,6 +1362,8 @@ class Alibaba_CS:
                 return True, []
             for cluster in describe_clusters_response:
                 cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
                 if str(cluster['state']).__contains__('running'):
                     flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
                     if flag:
@@ -1189,6 +1376,20 @@ class Alibaba_CS:
                                 new_params['cluster_id'] = cluster_info_db[3]
                                 new_params['cluster_details'] = json.dumps(cluster_details)
                                 new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
                                 new_params['operation'] = 'created from cloudbrain'
                                 insert_or_update_cluster_details(new_params)
                 if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
@@ -1207,7 +1408,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -1225,7 +1426,7 @@ class Alibaba_CS:
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
                                 flag, details = kube_one.get_cronjobs(cluster_url=cluster_url,
-                                                                                          token=token)
+                                                                      token=token)
                                 if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
                                                        "cronjob_list": details,
@@ -1244,6 +1445,113 @@ class Alibaba_CS:
             return False, e.message
 
     def get_jobs(self):
+        cluster_details_list = []
+        try:
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+
+            response = client.do_action_with_exception(request)
+            describe_clusters_response = json.loads(response)
+
+            if len(describe_clusters_response) == 0:
+                return True, []
+            for cluster in describe_clusters_response:
+                cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
+                if str(cluster['state']).__contains__('running'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Failed'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
+                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
+                    request = CommonRequest()
+                    request.set_accept_format('json')
+                    request.set_method('GET')
+                    request.set_protocol_type('https')  # https | http
+                    request.set_domain('cs.aliyuncs.com')
+                    request.set_version('2015-12-15')
+                    request.add_query_param('RegionId', "default")
+                    request.add_header('Content-Type', 'application/json')
+                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
+                    body = ''''''
+                    request.set_content(body.encode('utf-8'))
+                    response = client1.do_action_with_exception(request)
+                    cluster_config = json.loads(response)
+                    self.clusters_folder_directory = BASE_DIR
+                    if 'config' in cluster_config:
+                        os.chdir(self.clusters_folder_directory)
+                        # json.dumps(yaml.load(cluster_config['config']))
+                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
+                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
+                        kube_one = K8s(configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
+                                                                          cluster['cluster_id'], r"config"))
+                        flag, token = kube_one.get_token(self.clusters_folder_directory)
+                        os.chdir(self.clusters_folder_directory)
+                        if flag:
+                            cluster_url = None
+                            cluster_config = json.loads(cluster_config)
+                            for p in cluster_config['clusters']:
+                                cluster_info_token = p['cluster']
+                                cluster_url = cluster_info_token['server']
+                            if cluster_url is not None:
+                                flag, details = kube_one.get_jobs(cluster_url=cluster_url,
+                                                                  token=token)
+                                if flag:
+                                    cluster_details = {"cluster_id": cluster['cluster_id'],
+                                                       "jobs_list": details,
+                                                       "cluster_name": cluster['name']}
+                                    cluster_details_list.append(cluster_details)
+                                else:
+                                    return flag, cluster_details
+                        else:
+                            cluster_details = {"cluster_id": cluster['cluster_id'],
+                                               "jobs_list": {}, "cluster_name": cluster['name']}
+                            cluster_details_list.append(cluster_details)
+                    else:
+                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
+            return True, cluster_details_list
+        except Exception as e:
+            return False, e.message
+
+    def get_daemon_sets(self):
         cluster_details_list = []
         try:
             client = AcsClient(self.access_key, self.secret_key, 'default')
@@ -1298,7 +1606,7 @@ class Alibaba_CS:
                     request.set_content(body.encode('utf-8'))
                     response = client1.do_action_with_exception(request)
                     cluster_config = json.loads(response)
-                    self.clusters_folder_directory = os.getcwd()
+                    self.clusters_folder_directory = BASE_DIR
                     if 'config' in cluster_config:
                         os.chdir(self.clusters_folder_directory)
                         # json.dumps(yaml.load(cluster_config['config']))
@@ -1315,21 +1623,195 @@ class Alibaba_CS:
                                 cluster_info_token = p['cluster']
                                 cluster_url = cluster_info_token['server']
                             if cluster_url is not None:
-                                flag, details = kube_one.get_jobs(cluster_url=cluster_url,
-                                                                                          token=token)
+                                # namespace_list
+                                flag, details = kube_one.get_daemon_sets(cluster_url=cluster_url, token=token)
                                 if flag:
                                     cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "jobs_list": details,
+                                                       "namespace_list": details,
                                                        "cluster_name": cluster['name']}
                                     cluster_details_list.append(cluster_details)
                                 else:
                                     return flag, cluster_details
                         else:
                             cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "jobs_list": {}, "cluster_name": cluster['name']}
+                                               "namespace_list": {}, "cluster_name": cluster['name']}
                             cluster_details_list.append(cluster_details)
                     else:
                         return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
             return True, cluster_details_list
         except Exception as e:
             return False, e.message
+
+    def get_replica_sets(self):
+        cluster_details_list = []
+        try:
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+
+            response = client.do_action_with_exception(request)
+            describe_clusters_response = json.loads(response)
+
+            if len(describe_clusters_response) == 0:
+                return True, []
+            for cluster in describe_clusters_response:
+                cluster_details = {}
+                if str(cluster['state']).__contains__('running'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                        'True'):
+                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
+                    request = CommonRequest()
+                    request.set_accept_format('json')
+                    request.set_method('GET')
+                    request.set_protocol_type('https')  # https | http
+                    request.set_domain('cs.aliyuncs.com')
+                    request.set_version('2015-12-15')
+                    request.add_query_param('RegionId', "default")
+                    request.add_header('Content-Type', 'application/json')
+                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
+                    body = ''''''
+                    request.set_content(body.encode('utf-8'))
+                    response = client1.do_action_with_exception(request)
+                    cluster_config = json.loads(response)
+                    self.clusters_folder_directory = BASE_DIR
+                    if 'config' in cluster_config:
+                        os.chdir(self.clusters_folder_directory)
+                        # json.dumps(yaml.load(cluster_config['config']))
+                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
+                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
+                        kube_one = K8s(configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
+                                                                          cluster['cluster_id'], r"config"))
+                        flag, token = kube_one.get_token(self.clusters_folder_directory)
+                        os.chdir(self.clusters_folder_directory)
+                        if flag:
+                            cluster_url = None
+                            cluster_config = json.loads(cluster_config)
+                            for p in cluster_config['clusters']:
+                                cluster_info_token = p['cluster']
+                                cluster_url = cluster_info_token['server']
+                            if cluster_url is not None:
+                                # namespace_list
+                                flag, details = kube_one.get_replica_sets(cluster_url=cluster_url, token=token)
+                                if flag:
+                                    cluster_details = {"cluster_id": cluster['cluster_id'],
+                                                       "namespace_list": details,
+                                                       "cluster_name": cluster['name']}
+                                    cluster_details_list.append(cluster_details)
+                                else:
+                                    return flag, cluster_details
+                        else:
+                            cluster_details = {"cluster_id": cluster['cluster_id'],
+                                               "namespace_list": {}, "cluster_name": cluster['name']}
+                            cluster_details_list.append(cluster_details)
+                    else:
+                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
+            return True, cluster_details_list
+        except Exception as e:
+            return False, e.message
+
+    def create_from_yaml(self, cluster_id=None, data=None):
+        print 'll'
+        try:
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+            response = client.do_action_with_exception(request)
+            describe_clusters_response = json.loads(response)
+            access_flag = True
+            if len(describe_clusters_response) == 0:
+                return False, "No clusters are present in the current account"
+            for cluster in describe_clusters_response:
+                cluster_details = {}
+                cluster_info = {"cluster_info": cluster}
+                cluster_details.update(cluster_info)
+                if str(cluster['state']).__contains__('running'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_details)
+                                new_params['status'] = 'Running'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if str(cluster['state']).__contains__('failed'):
+                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
+                    if flag:
+                        for cluster_info_db in cluster_info_db_list:
+                            if str(cluster_info_db[5]).__contains__('Initiated'):
+                                new_params = {}
+                                new_params['is_insert'] = False
+                                new_params['user_id'] = cluster_info_db[1]
+                                new_params['provider_id'] = cluster_info_db[2]
+                                new_params['cluster_id'] = cluster_info_db[3]
+                                new_params['cluster_details'] = json.dumps(cluster_info_db[4])
+                                new_params['status'] = 'Failed'
+                                new_params['operation'] = 'created from cloudbrain'
+                                insert_or_update_cluster_details(new_params)
+                if cluster_id in cluster["cluster_id"]:
+                    if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
+                            'True'):
+                        access_flag = False
+                        client1 = AcsClient(self.access_key, self.secret_key, 'default')
+                        request = CommonRequest()
+                        request.set_accept_format('json')
+                        request.set_method('GET')
+                        request.set_protocol_type('https')  # https | http
+                        request.set_domain('cs.aliyuncs.com')
+                        request.set_version('2015-12-15')
+                        request.add_query_param('RegionId', "default")
+                        request.add_header('Content-Type', 'application/json')
+                        request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
+                        body = ''''''
+                        request.set_content(body.encode('utf-8'))
+                        response = client1.do_action_with_exception(request)
+                        cluster_config = json.loads(response)
+                        self.clusters_folder_directory = BASE_DIR
+                        if 'config' in cluster_config:
+                            os.chdir(self.clusters_folder_directory)
+                            # json.dumps(yaml.load(cluster_config['config']))
+                            cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
+                            file_operation(cluster['cluster_id'], json.loads(cluster_config))
+                            kube_one = K8s(
+                                configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
+                                                                   cluster['cluster_id'], r"config"))
+                            flag, exception_list, names_list = kube_one.create_from_yaml()
+        except Exception as e:
+            print e

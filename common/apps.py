@@ -179,7 +179,7 @@ def get_path(cluster_id):
     path = "./"
     if get_platform().__contains__('Linux') or get_platform().__contains__('OS X'):
         # for linux
-        path = "/var/www/html/clusterProvisioningClient/"
+        path = "/var/www/html/clusterprovisioning/"
     directory = os.path.join(path, 'clusters', cluster_id)
     return directory
 

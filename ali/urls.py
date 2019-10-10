@@ -23,4 +23,6 @@ urlpatterns = [
     url(r'^getAllCronJobs', views.get_all_cronjobs),
     url(r'^getAllJobs', views.get_all_jobs),
     url(r'^getAllSecrets', views.get_all_secrets),
+    url(r'^getAllDaemonSets', views.get_all_daemon_sets),
+    url(r'^getAllReplicaSets', views.get_all_replica_sets),
 ]

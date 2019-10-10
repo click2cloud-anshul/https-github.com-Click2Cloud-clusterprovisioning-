@@ -1678,3 +1678,149 @@ def get_all_jobs(params):
                          "provider_cluster_list": "",
                          "error": e.message})
         return JsonResponse(response, safe=False)
+
+@api_view(["GET"])
+def get_all_daemon_sets(params):
+    response = {}
+    try:
+        json_request = json.loads(params.body)
+        response = {}
+        error = False
+        valid_keys_json = ['user_id']
+        providers_cluster_info_list = []
+        for key in valid_keys_json:
+            if key not in json_request:
+                error = True
+                response.update({"error": "key " + key + " is not found"})
+            else:
+                json_request[key] = str(json_request[key].strip())
+                if (len(json_request[key])) == 0:
+                    error = True
+                    response.update({"error": "value " + key + " is not found"})
+        if not error:
+            user_id = json_request["user_id"]
+            try:
+                user_id = int(user_id)
+                user_id = str(user_id)
+            except Exception:
+                raise Exception('Please provide valid user_id.')
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            if not flag:
+                response.update({"status": False,
+                                 "provider_cluster_list": "",
+                                 "error": access_key_secret_key_list})
+                return JsonResponse(response, safe=False)
+            access_key_secret_key_list = json.loads(access_key_secret_key_list)
+            unique_access_key_list = []
+            if list(access_key_secret_key_list).__len__() > 0:
+                for access_key_secret_key in access_key_secret_key_list:
+
+                    if access_key_secret_key['client_id'] in unique_access_key_list:
+                        continue
+                    else:
+                        unique_access_key_list.append(access_key_secret_key['client_id'])
+            for access_key in unique_access_key_list:
+                providers_cluster_info = {}
+                for access_key_secret_key in access_key_secret_key_list:
+                    if access_key_secret_key['client_id'] is access_key:
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=access_key,
+                            ali_secret_key=access_key_secret_key['client_secret'],
+                            region_id='default'
+                        )
+                        flag, cluster_details_list = alibaba_cs.get_daemon_sets()
+                        if flag:
+                            # access_key_secret_key['name']: cluster_details_list
+                            providers_cluster_info.update(
+                                {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
+                        else:
+                            raise Exception(cluster_details_list)
+
+                providers_cluster_info_list.append(providers_cluster_info)
+        else:
+            response.update({"status": False,
+                             "provider_cluster_list": providers_cluster_info_list})
+            return JsonResponse(response, safe=False)
+        response.update({"status": True,
+                         "provider_cluster_list": providers_cluster_info_list,
+                         'error': ''})
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        response.update({"status": False,
+                         "provider_cluster_list": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
+
+
+@api_view(["GET"])
+def get_all_replica_sets(params):
+    response = {}
+    try:
+        json_request = json.loads(params.body)
+        response = {}
+        error = False
+        valid_keys_json = ['user_id']
+        providers_cluster_info_list = []
+        for key in valid_keys_json:
+            if key not in json_request:
+                error = True
+                response.update({"error": "key " + key + " is not found"})
+            else:
+                json_request[key] = str(json_request[key].strip())
+                if (len(json_request[key])) == 0:
+                    error = True
+                    response.update({"error": "value " + key + " is not found"})
+        if not error:
+            user_id = json_request["user_id"]
+            try:
+                user_id = int(user_id)
+                user_id = str(user_id)
+            except Exception:
+                raise Exception('Please provide valid user_id.')
+            flag, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            if not flag:
+                response.update({"status": False,
+                                 "provider_cluster_list": "",
+                                 "error": access_key_secret_key_list})
+                return JsonResponse(response, safe=False)
+            access_key_secret_key_list = json.loads(access_key_secret_key_list)
+            unique_access_key_list = []
+            if list(access_key_secret_key_list).__len__() > 0:
+                for access_key_secret_key in access_key_secret_key_list:
+
+                    if access_key_secret_key['client_id'] in unique_access_key_list:
+                        continue
+                    else:
+                        unique_access_key_list.append(access_key_secret_key['client_id'])
+            for access_key in unique_access_key_list:
+                providers_cluster_info = {}
+                for access_key_secret_key in access_key_secret_key_list:
+                    if access_key_secret_key['client_id'] is access_key:
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=access_key,
+                            ali_secret_key=access_key_secret_key['client_secret'],
+                            region_id='default'
+                        )
+                        flag, cluster_details_list = alibaba_cs.get_replica_sets()
+                        if flag:
+                            # access_key_secret_key['name']: cluster_details_list
+                            providers_cluster_info.update(
+                                {"provider_name": access_key_secret_key['name'], "cluster_list": cluster_details_list})
+                        else:
+                            raise Exception(cluster_details_list)
+
+                providers_cluster_info_list.append(providers_cluster_info)
+        else:
+            response.update({"status": False,
+                             "provider_cluster_list": providers_cluster_info_list})
+            return JsonResponse(response, safe=False)
+        response.update({"status": True,
+                         "provider_cluster_list": providers_cluster_info_list,
+                         'error': ''})
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        response.update({"status": False,
+                         "provider_cluster_list": "",
+                         "error": e.message})
+        return JsonResponse(response, safe=False)
+
