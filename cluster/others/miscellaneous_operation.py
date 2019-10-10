@@ -21,7 +21,7 @@ def get_access_key_secret_key_list(user_id=None):
         result_json = json.dumps(result)
         if result is None:
             error = True
-            return error, "No data found for access key and secret key. Please check the  user id."
+            return error, 'No data found for access key and secret key. Please check the  user id.'
         return error, result_json
     except Exception as ex:
         error = True
@@ -52,31 +52,32 @@ def key_validations_cluster_provisioning(request_keys, validation_keys):
             elif not isinstance(request_keys.get(key), int):
                 missing_value_flag = True
                 missing_values.append(key)
-            else:
-                pass
 
         if missing_key_flag or missing_value_flag:
             response = {
-                "error":
+                'error':
                     {
-                        "message": "Following keys and/or values are missing in request parameter or value type is invalid.",
-                        "keys_info": {
-                            "keys": missing_keys,
-                            "values": missing_values,
+                        'message': 'Following keys and/or values are missing in request parameter or value type is invalid.',
+                        'keys_info': {
+                            'keys': missing_keys,
+                            'values': missing_values,
                         }
                     }
             }
             if len(missing_keys) == 0 and len(missing_values) == 0:
-                response.get("error").get("keys_info").update({"keys": []})
-                response.get("error").get("keys_info").update({"values": []})
+                response.get('error').get('keys_info').update({'keys': []})
+                response.get('error').get('keys_info').update({'values': []})
             elif len(missing_keys) == 0:
-                response.get("error").get("keys_info").update({"keys": []})
+                response.get('error').get('keys_info').update({'keys': []})
             elif len(missing_keys) == 0:
-                response.get("error").get("missing").update({"values": []})
+                response.get('error').get('missing').update({'values': []})
     except Exception as e:
-        print e.message
+        error = True
+        return error, response.update({
+            'message': e.message
+        })
     finally:
-        if not bool(response):
+        if len(response) == 0:
             # return error=False if response is empty
             error = False
             return error, response
