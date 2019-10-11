@@ -49,9 +49,16 @@ def key_validations_cluster_provisioning(request_keys, validation_keys):
             if key not in request_keys:
                 missing_key_flag = True
                 missing_keys.append(key)
-            elif not isinstance(request_keys.get(key), int):
-                missing_value_flag = True
-                missing_values.append(key)
+            elif key in ['provider_id', 'user_id']:
+                # checking the type of value is int only
+                if not isinstance(request_keys.get(key), int):
+                    missing_value_flag = True
+                    missing_values.append(key)
+            elif key in ['region_id']:
+                # checking string length and checking the type of value is string only
+                if (len(str(request_keys.get(key)).strip())) == 0 or not isinstance(request_keys.get(key), unicode):
+                    missing_value_flag = True
+                    missing_values.append(key)
 
         if missing_key_flag or missing_value_flag:
             response = {

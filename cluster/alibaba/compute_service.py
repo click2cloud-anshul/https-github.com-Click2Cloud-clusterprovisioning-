@@ -151,9 +151,9 @@ class Alibaba_ECS:
 
     def key_pairs_list(self):
         """
+        Returns the name list of ssh key pairs available in the Alibaba in a particular region
         :return:
         """
-
         try:
             conn = client.AcsClient(
                 ak=self.access_key,
@@ -166,16 +166,17 @@ class Alibaba_ECS:
             response = conn.do_action_with_exception(request)
             key_pair_response = json.loads(response)
 
-            result = key_pair_response["KeyPairs"]["KeyPair"]
+            result = key_pair_response.get("KeyPairs").get("KeyPair")
             key_pair_list = []
             for key_pair in result:
-                key_pair_list.append(str(key_pair['KeyPairName']))
+                key_pair_list.append(str(key_pair.get('KeyPairName')))
             return True, key_pair_list
         except Exception as e:
-            return False, e.args[0]
+            return False, e.message
 
-    def vpc_list(self):
+    def network_details(self):
         """
+        Fetched the network details of the particular region in alibaba
         :return:
         """
 
@@ -191,7 +192,7 @@ class Alibaba_ECS:
             response = conn.do_action_with_exception(request)
             vpc_list_response = json.loads(response)
 
-            result = vpc_list_response["Vpcs"]["Vpc"]
+            result = vpc_list_response.get('Vpcs').get('Vpc')
             vpc_list = []
 
             vswitch_id_requests = DescribeVSwitchesRequest()
@@ -201,32 +202,32 @@ class Alibaba_ECS:
                                             region_id=self.region_id, ).do_action_with_exception(vswitch_id_requests)
             vswitch_id_response = json.loads(vswitch_id_response)
             vswitch_list = []
-            var = vswitch_id_response["VSwitches"]["VSwitch"]
-            for vswitchId in var:
+            vswitch_result = vswitch_id_response.get('VSwitches').get('VSwitch')
+            for vswitchId in vswitch_result:
                 vswitch_info = {
-                    "VSwitchName": str(vswitchId['VSwitchName']),
-                    "VSwitchId": str(vswitchId['VSwitchId']),
-                    "ZoneId": str(vswitchId['ZoneId']),
-                    "VSwitchCidrBlock": str(vswitchId['CidrBlock'])
+                    'VSwitchName': str(vswitchId.get('VSwitchName')),
+                    'VSwitchId': str(vswitchId.get('VSwitchId')),
+                    'ZoneId': str(vswitchId.get('ZoneId')),
+                    'VSwitchCidrBlock': str(vswitchId.get('CidrBlock'))
                 }
                 vswitch_list.append(vswitch_info)
 
             for vpc in result:
-                vswitch_id_list = list(vpc['VSwitchIds']["VSwitchId"])
+                vswitch_id_list = list(vpc.get('VSwitchIds').get('VSwitchId'))
                 string_list = []
                 for vswitch_id in vswitch_id_list:
                     for vswitch in vswitch_list:
-                        if vswitch["VSwitchId"] in vswitch_id:
+                        if vswitch.get('VSwitchId') in vswitch_id:
                             string_list.append(vswitch)
                 vpc_info = {
-                    "VpcName": str(vpc['VpcName']),
-                    "VpcCidrBlock": str(vpc['CidrBlock']),
-                    "VpcId": str(vpc['VpcId']),
-                    "RegionId": str(vpc['RegionId']),
-                    "Status": str(vpc['Status']),
-                    "VSwitchIds": string_list
+                    'VpcName': str(vpc.get('VpcName')),
+                    'VpcCidrBlock': str(vpc.get('CidrBlock')),
+                    'VpcId': str(vpc.get('VpcId')),
+                    'RegionId': str(vpc.get('RegionId')),
+                    'Status': str(vpc.get('Status')),
+                    'VSwitchIds': string_list
                 }
                 vpc_list.append(vpc_info)
             return True, vpc_list
         except Exception as e:
-            return False, e.args[0]
+            return False, e.message
