@@ -118,7 +118,8 @@ class K8s(object):
                     # print (namespace)
 
                 with open(path.join(path.dirname(__file__), r"" + os.path.join(clusters_folder_directory,
-                                                                               'clusters', "sa1.json"))) as sa1:
+                                                                               'clusters',
+                                                                               "service-account.json"))) as sa1:
                     body = yaml.safe_load(sa1)
                     namespace = 'click2cloud-ns'
                     self.clientCoreV1.create_namespaced_service_account_with_http_info(body=body,
@@ -276,59 +277,60 @@ class K8s(object):
             print False, 'Max retries exceeded with url ' + cluster_url, ''
 
     def get_storageclasses(self, cluster_url=None, token=None):
-            try:
-                url = cluster_url + "/apis/storage.k8s.io/v1/storageclasses"
-                headers = {
-                    'Authorization': "Bearer " + token,
-                }
-                response = requests.request("GET", url, headers=headers, verify=False)
-                return True, json.loads(response.text)
-            except Exception:
-                print False, 'Max retries exceeded with url ' + cluster_url
+        try:
+            url = cluster_url + "/apis/storage.k8s.io/v1/storageclasses"
+            headers = {
+                'Authorization': "Bearer " + token,
+            }
+            response = requests.request("GET", url, headers=headers, verify=False)
+            return True, json.loads(response.text)
+        except Exception:
+            print False, 'Max retries exceeded with url ' + cluster_url
 
     def get_cronjobs(self, cluster_url=None, token=None):
-            try:
-                url = cluster_url + "/apis/batch/v1beta1/cronjobs"
-                headers = {
-                    'Authorization': "Bearer " + token,
-                }
-                response = requests.request("GET", url, headers=headers, verify=False)
-                return True, json.loads(response.text)
-            except Exception:
-                print False, 'Max retries exceeded with url ' + cluster_url
+        try:
+            url = cluster_url + "/apis/batch/v1beta1/cronjobs"
+            headers = {
+                'Authorization': "Bearer " + token,
+            }
+            response = requests.request("GET", url, headers=headers, verify=False)
+            return True, json.loads(response.text)
+        except Exception:
+            print False, 'Max retries exceeded with url ' + cluster_url
 
     def get_jobs(self, cluster_url=None, token=None):
-            try:
-                url = cluster_url + "/apis/batch/v1/jobs"
-                headers = {
-                    'Authorization': "Bearer " + token,
-                }
-                response = requests.request("GET", url, headers=headers, verify=False)
-                return True, json.loads(response.text)
-            except Exception:
-                print False, 'Max retries exceeded with url ' + cluster_url
+        try:
+            url = cluster_url + "/apis/batch/v1/jobs"
+            headers = {
+                'Authorization': "Bearer " + token,
+            }
+            response = requests.request("GET", url, headers=headers, verify=False)
+            return True, json.loads(response.text)
+        except Exception:
+            print False, 'Max retries exceeded with url ' + cluster_url
 
     def get_daemon_sets(self, cluster_url=None, token=None):
-            try:
-                url = cluster_url + "/apis/apps/v1/daemonsets"
-                headers = {
-                    'Authorization': "Bearer " + token,
-                }
-                response = requests.request("GET", url, headers=headers, verify=False)
-                return True, json.loads(response.text)
-            except Exception:
-                print False, 'Max retries exceeded with url ' + cluster_url
+        try:
+            url = cluster_url + "/apis/apps/v1/daemonsets"
+            headers = {
+                'Authorization': "Bearer " + token,
+            }
+            response = requests.request("GET", url, headers=headers, verify=False)
+            return True, json.loads(response.text)
+        except Exception:
+            print False, 'Max retries exceeded with url ' + cluster_url
 
     def get_replica_sets(self, cluster_url=None, token=None):
-            try:
-                url = cluster_url + "/apis/apps/v1/replicasets"
-                headers = {
-                    'Authorization': "Bearer " + token,
-                }
-                response = requests.request("GET", url, headers=headers, verify=False)
-                return True, json.loads(response.text)
-            except Exception:
-                print False, 'Max retries exceeded with url ' + cluster_url
+        try:
+            url = cluster_url + "/apis/apps/v1/replicasets"
+            headers = {
+                'Authorization': "Bearer " + token,
+            }
+            response = requests.request("GET", url, headers=headers, verify=False)
+            return True, json.loads(response.text)
+        except Exception:
+            print False, 'Max retries exceeded with url ' + cluster_url
+
 
 def check_for_token(kube_one=None):
     try:

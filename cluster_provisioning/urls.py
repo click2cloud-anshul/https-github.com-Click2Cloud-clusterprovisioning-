@@ -11,5 +11,6 @@ urlpatterns = [
     # url(r'^get-all-clusters-config', views.all_cluster_config),
     # url(r'^get-all-clusters-details', views.all_cluster_details),
     url(r'^alibaba/get-all-clusters-details', views.all_cluster_details),
+    url(r'^alibaba/get-all-pod-details', views.all_pod_details),
 
 ]
