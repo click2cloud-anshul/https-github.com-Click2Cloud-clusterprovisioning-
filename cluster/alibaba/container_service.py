@@ -505,1347 +505,1511 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def get_secrets(self):
+    def get_namespace_details(self):
+        """
+        Get the detail of all the namespaces of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                flag, details = kube_one.get_secrets(cluster_url=cluster_url, token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "secret_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'namespace_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_namespaces(cluster_url=cluster_url,
+                                                                                                token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'namespace_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "secret_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_nodes(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_role_details(self):
+        """
+        Get the detail of all the roles of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                flag, details = kube_one.get_nodes(cluster_url=cluster_url, token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "node_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'role_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_roles(cluster_url=cluster_url,
+                                                                                           token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'role_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "node_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_deployments(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_persistent_volume_details(self):
+        """
+        Get the detail of all the persistent volumes of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            cluster_list_for_pods = []
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                flag, details = kube_one.get_deployments(cluster_url=cluster_url, token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "deployment_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'persistent_volume_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_persistent_volumes(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'persistent_volume_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "deployment_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_namespaces(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_persistent_volume_claims_details(self):
+        """
+        Get the detail of all the persistent volume claims of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                # namespace_list
-                                flag, details = kube_one.get_namespaces(cluster_url=cluster_url, token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "namespace_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'persistent_volume_claim_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_persistent_volume_claims(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'persistent_volume_claim_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "namespace_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_persistent_volume_claims(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_deployment_details(self):
+        """
+        Get the detail of all the deployment of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-
-                                flag, details = kube_one.get_persistent_volume_claims(cluster_url=cluster_url,
-                                                                                      token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "persistent_volume_claims_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'deployment_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_deployments(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'deployment_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "persistent_volume_claims_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_persistent_volumes(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_secret_details(self):
+        """
+        Get the detail of all the secret of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                flag, details = kube_one.get_persistent_volumes(cluster_url=cluster_url,
-                                                                                token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "persistent_volumes_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'secret_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_secrets(cluster_url=cluster_url,
+                                                                                             token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'secret_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "persistent_volumes_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_services(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_node_details(self):
+        """
+        Get the detail of all the node of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                flag, details = kube_one.get_services(cluster_url=cluster_url,
-                                                                      token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "services_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'node_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_nodes(cluster_url=cluster_url,
+                                                                                           token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'node_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "services_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_roles(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_service_details(self):
+        """
+        Get the detail of all the service of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-
-                            if cluster_url is not None:
-                                flag, cluster_roles_list, roles_list = kube_one.get_roles(cluster_url=cluster_url,
-                                                                                          token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "cluster_roles_list": cluster_roles_list,
-                                                       "roles_list": roles_list,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'service_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_services(cluster_url=cluster_url,
+                                                                                              token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'service_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "roles_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_storageclasses(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_cron_job_details(self):
+        """
+        Get the detail of all the cron jobs of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                flag, details = kube_one.get_storageclasses(cluster_url=cluster_url,
-                                                                            token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "storageclasses_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'cron_job_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_cron_jobs(cluster_url=cluster_url,
+                                                                                               token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'cron_job_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "storageclasses_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_cronjobs(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_job_details(self):
+        """
+        Get the detail of all the jobs of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                flag, details = kube_one.get_cronjobs(cluster_url=cluster_url,
-                                                                      token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "cronjob_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'job_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_jobs(cluster_url=cluster_url,
+                                                                                          token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'job_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "cronjob_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_jobs(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_all_storage_class_details(self):
+        """
+        Get the detail of all the storage class of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                flag, details = kube_one.get_jobs(cluster_url=cluster_url,
-                                                                  token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "jobs_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'storage_class_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_storage_class(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'storage_class_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "jobs_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_daemon_sets(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_all_replication_controller_details(self):
+        """
+        Get the detail of all the replication controllers of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                # namespace_list
-                                flag, details = kube_one.get_daemon_sets(cluster_url=cluster_url, token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "namespace_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'replication_controller_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_replication_controllers(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'replication_controller_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "namespace_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
 
-    def get_replica_sets(self):
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_all_stateful_set_details(self):
+        """
+        Get the detail of all the stateful sets of all the clusters in alibaba console
+        :return:
+        """
         cluster_details_list = []
+        error = False
+        response = []
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                        'True'):
-                    client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client1.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    self.clusters_folder_directory = BASE_DIR
-                    if 'config' in cluster_config:
-                        os.chdir(self.clusters_folder_directory)
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                        kube_one = Kubernetes_Operations(
-                            configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                               cluster['cluster_id'], r"config"))
-                        flag, token = kube_one.get_token(self.clusters_folder_directory)
-                        os.chdir(self.clusters_folder_directory)
-                        if flag:
-                            cluster_url = None
-                            cluster_config = json.loads(cluster_config)
-                            for p in cluster_config['clusters']:
-                                cluster_info_token = p['cluster']
-                                cluster_url = cluster_info_token['server']
-                            if cluster_url is not None:
-                                # namespace_list
-                                flag, details = kube_one.get_replica_sets(cluster_url=cluster_url, token=token)
-                                if flag:
-                                    cluster_details = {"cluster_id": cluster['cluster_id'],
-                                                       "namespace_list": details,
-                                                       "cluster_name": cluster['name']}
-                                    cluster_details_list.append(cluster_details)
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'stateful_set_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_stateful_sets(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'stateful_set_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
                                 else:
-                                    return flag, cluster_details
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            cluster_details = {"cluster_id": cluster['cluster_id'],
-                                               "namespace_list": {}, "cluster_name": cluster['name']}
-                            cluster_details_list.append(cluster_details)
-                    else:
-                        return False, 'config not present in JSON for cluster_id ' + cluster['cluster_id']
-            return True, cluster_details_list
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
+
         except Exception as e:
-            return False, e.message
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_all_replica_set_details(self):
+        """
+        Get the detail of all the replica sets of all the clusters in alibaba console
+        :return:
+        """
+        cluster_details_list = []
+        error = False
+        response = []
+        try:
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'replica_set_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_replica_sets(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'replica_set_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
+                                else:
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                        else:
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_all_daemon_set_details(self):
+        """
+        Get the detail of all the daemon sets of all the clusters in alibaba console
+        :return:
+        """
+        cluster_details_list = []
+        error = False
+        response = []
+        try:
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'daemon_set_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_daemon_sets(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'daemon_set_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
+                                else:
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                        else:
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_all_config_map_details(self):
+        """
+        Get the detail of all the config map of all the clusters in alibaba console
+        :return:
+        """
+        cluster_details_list = []
+        error = False
+        response = []
+        try:
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'config_map_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_config_maps(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'config_map_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
+                                else:
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                        else:
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_all_ingress_details(self):
+        """
+        Get the detail of all the ingress of all the clusters in alibaba console
+        :return:
+        """
+        cluster_details_list = []
+        error = False
+        response = []
+        try:
+            error, response = self.describe_all_clusters()
+            if not error:
+                if len(response) == 0:
+                    response = []
+                else:
+                    for cluster in response:
+                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                                           'ingress_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'error': None}
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if 'parameters' in cluster:
+                                if 'True' in str(cluster.get('parameters').get('Eip')):
+                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    if not error:
+                                        cluster_config = json.loads(response)
+                                        if 'config' in cluster_config:
+                                            cluster_config = json.dumps(
+                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                                                                         json.loads(cluster_config))
+                                            if not error:
+                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                           cluster.get('cluster_id'),
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error, response = k8_obj.get_token()
+                                                if not error:
+                                                    # If token is created
+                                                    cluster_url = None
+                                                    cluster_config = json.loads(cluster_config)
+                                                    for item in cluster_config.get('clusters'):
+                                                        cluster_info_token = item.get('cluster')
+                                                        cluster_url = cluster_info_token.get('server')
+                                                    if cluster_url is not None:
+                                                        error, response = k8_obj.get_ingress_details(
+                                                            cluster_url=cluster_url,
+                                                            token=response)
+                                                        if not error:
+                                                            cluster_details.update({
+                                                                'ingress_details': response
+                                                            })
+                                                        else:
+                                                            return error, cluster_details
+                                                    else:
+                                                        cluster_details.update(
+                                                            {'error': 'Unable to find the cluster endpoint'})
+                                                else:
+                                                    # If token is not created
+                                                    cluster_details.update({'error': response})
+                                            else:
+                                                # If error while generating config file for a particular cluster
+                                                cluster_details.update({'error': response})
+                                        else:
+                                            # If config key not present in Alibaba response
+                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                    else:
+                                        cluster_details.update({'error': response})
+                                else:
+                                    # If Eip is not present in cluster
+                                    cluster_details.update(
+                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                            else:
+                                cluster_details.update(
+                                    {
+                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                        else:
+                            raise Exception(response)
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                raise Exception(response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
     def create_from_yaml(self, cluster_id=None, data=None):
         print 'll'

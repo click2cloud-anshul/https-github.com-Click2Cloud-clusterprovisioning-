@@ -235,84 +235,39 @@ class Kubernetes_Operations(object):
         finally:
             return error, response
 
-    def get_secrets(self, cluster_url=None, token=None):
-        try:
-            url = cluster_url + "/api/v1/secrets"
-            headers = {
-                'Authorization': "Bearer " + token,
-            }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
-
-    def get_nodes(self, cluster_url=None, token=None):
-        try:
-            url = cluster_url + "/api/v1/nodes"
-            headers = {
-                'Authorization': "Bearer " + token,
-            }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
-
-    def get_deployments(self, cluster_url=None, token=None):
-        try:
-            url = cluster_url + "/apis/apps/v1/deployments"
-            headers = {
-                'Authorization': "Bearer " + token,
-            }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
-
     def get_namespaces(self, cluster_url=None, token=None):
+        """
+            it retrives the information for namespaces
+            :param cluster_url:
+            :param token:
+            :return:
+        """
+        error = False
+        response = None
         try:
-            url = cluster_url + "/api/v1/namespaces"
+            url = '%s/api/v1/namespaces' % cluster_url
             headers = {
-                'Authorization': "Bearer " + token,
+                'Authorization': 'Bearer %s' % token,
             }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
-
-    def get_persistent_volume_claims(self, cluster_url=None, token=None):
-        try:
-            url = cluster_url + "/api/v1/persistentvolumeclaims"
-            headers = {
-                'Authorization': "Bearer " + token,
-            }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
-
-    def get_persistent_volumes(self, cluster_url=None, token=None):
-        try:
-            url = cluster_url + "/api/v1/persistentvolumes"
-            headers = {
-                'Authorization': "Bearer " + token,
-            }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
-
-    def get_services(self, cluster_url=None, token=None):
-        try:
-            url = cluster_url + "/api/v1/services"
-            headers = {
-                'Authorization': "Bearer " + token,
-            }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
     def get_roles(self, cluster_url=None, token=None):
+        """
+            it retrives the information for roles and cluster roles
+            :param cluster_url:
+            :param token:
+            :return:
+        """
+
+        error = False
+        response = None
         try:
             url = cluster_url + "/apis/rbac.authorization.k8s.io/v1/roles"
             headers = {
@@ -327,61 +282,356 @@ class Kubernetes_Operations(object):
             response1 = requests.request("GET", url, headers=headers, verify=False)
             cluster_roles_list = json.loads(response1.text)
             roles_list = json.loads(response.text)
-            return True, cluster_roles_list, roles_list
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url, ''
+            error = False
+            response = {'cluster_role_list': cluster_roles_list,
+                        'role_list': roles_list}
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
-    def get_storageclasses(self, cluster_url=None, token=None):
+    def get_persistent_volumes(self, cluster_url=None, token=None):
+        """
+            it retrives the information for persistent volumes
+            :param cluster_url:
+            :param token:
+            :return:
+        """
+        error = False
+        response = None
         try:
-            url = cluster_url + "/apis/storage.k8s.io/v1/storageclasses"
+            url = '%s/api/v1/persistentvolumes' % cluster_url
             headers = {
-                'Authorization': "Bearer " + token,
+                'Authorization': 'Bearer %s' % token,
             }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
-    def get_cronjobs(self, cluster_url=None, token=None):
+    def get_persistent_volume_claims(self, cluster_url=None, token=None):
+        """
+        it retrives the information for persistent volumes claims
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
         try:
-            url = cluster_url + "/apis/batch/v1beta1/cronjobs"
+            url = '%s/api/v1/persistentvolumeclaims' % cluster_url
             headers = {
-                'Authorization': "Bearer " + token,
+                'Authorization': 'Bearer %s' % token,
             }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_secrets(self, cluster_url=None, token=None):
+        """
+        it retrives the information for secrets
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/api/v1/secrets' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_nodes(self, cluster_url=None, token=None):
+        """
+        it retrives the information for nodes
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/api/v1/nodes' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_deployments(self, cluster_url=None, token=None):
+        """
+        it retrives the information for deployments
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/apis/apps/v1/deployments' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_services(self, cluster_url=None, token=None):
+        """
+        it retrives the information for services
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/api/v1/services' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_cron_jobs(self, cluster_url=None, token=None):
+        """
+        it retrives the information for cron jobs
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/apis/batch/v1beta1/cronjobs' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
     def get_jobs(self, cluster_url=None, token=None):
+        """
+        it retrives the information for jobs
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
         try:
-            url = cluster_url + "/apis/batch/v1/jobs"
+            url = '%s/apis/batch/v1/jobs' % cluster_url
             headers = {
-                'Authorization': "Bearer " + token,
+                'Authorization': 'Bearer %s' % token,
             }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
-    def get_daemon_sets(self, cluster_url=None, token=None):
+    def get_replication_controllers(self, cluster_url=None, token=None):
+        """
+        it retrives the information for replication controller
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
         try:
-            url = cluster_url + "/apis/apps/v1/daemonsets"
+            url = '%s/api/v1/replicationcontrollers' % cluster_url
             headers = {
-                'Authorization': "Bearer " + token,
+                'Authorization': 'Bearer %s' % token,
             }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_storage_class(self, cluster_url=None, token=None):
+        """
+        it retrives the information for storage class
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/apis/storage.k8s.io/v1/storageclasses' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_stateful_sets(self, cluster_url=None, token=None):
+        """
+        it retrives the information for stateful sets
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/apis/apps/v1/statefulsets' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
     def get_replica_sets(self, cluster_url=None, token=None):
+        """
+        it retrives the information for replica_sets
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
         try:
-            url = cluster_url + "/apis/apps/v1/replicasets"
+            url = '%s/apis/apps/v1/replicasets' % cluster_url
             headers = {
-                'Authorization': "Bearer " + token,
+                'Authorization': 'Bearer %s' % token,
             }
-            response = requests.request("GET", url, headers=headers, verify=False)
-            return True, json.loads(response.text)
-        except Exception:
-            print False, 'Max retries exceeded with url ' + cluster_url
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_daemon_sets(self, cluster_url=None, token=None):
+        """
+        it retrives the information for daemon sets
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/apis/apps/v1/daemonsets' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_config_maps(self, cluster_url=None, token=None):
+        """
+        it retrives the information for config maps
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/api/v1/configmaps' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_ingress_details(self, cluster_url=None, token=None):
+        """
+        it retrives the information for ingress
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s/apis/networking.k8s.io/v1beta1/ingresses' % cluster_url
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('GET', url, headers=headers, verify=False)
+            error = False
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
