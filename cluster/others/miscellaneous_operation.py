@@ -65,6 +65,16 @@ def key_validations_cluster_provisioning(request_keys=None, validation_keys=None
                 if (len(str(request_keys.get(key)).strip())) == 0 or not isinstance(request_keys.get(key), unicode):
                     missing_value_flag = True
                     missing_values.append(key)
+            elif key in ['request_body']:
+                # checking dict length and checking the type of value is dict only
+                if not isinstance(request_keys.get(key), dict) or len(request_keys.get(key)) == 0:
+                    missing_value_flag = True
+                    missing_values.append(key)
+            elif key in ['zone_id_list']:
+                # checking dict length and checking the type of value is dict only
+                if not isinstance(request_keys.get(key), list) or len(request_keys.get(key)) == 0:
+                    missing_value_flag = True
+                    missing_values.append(key)
 
         if missing_key_flag or missing_value_flag:
             response = {
@@ -191,7 +201,7 @@ def create_cluster_config_file(cluster_id=None, config_details=None):
         path = os.path.join(BASE_DIR, 'cluster', 'dumps', cluster_id)
         if not os.path.exists(path):
             os.makedirs(path)
-        with open(os.path.join(path, "config"), "w+") as outfile:
+        with open(os.path.join(path, 'config'), 'w+') as outfile:
             json.dump(config_details, outfile)
         response = 'Success'
     except Exception as e:
@@ -254,7 +264,7 @@ def check_for_provider_id(provider_id, credentials):
             else:
                 error = True
         if error:
-            response = 'No such provider exists'
+            response = 'provider does not exists'
     except Exception as e:
         error = True
         response = e.message

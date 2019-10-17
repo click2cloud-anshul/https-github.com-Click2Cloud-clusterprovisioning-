@@ -66,6 +66,10 @@ class Kubernetes_Operations(object):
 
     @property
     def clientCoreV1(self):
+        """
+        client core method of kubernetes
+        :return:
+        """
         k8_loader = kube_config.KubeConfigLoader(self.config)
         call_config = type.__call__(Configuration)
         k8_loader.load_and_set(call_config)
@@ -73,6 +77,10 @@ class Kubernetes_Operations(object):
         return client.CoreV1Api()
 
     def clientAppsV1(self):
+        """
+        client Apps for kubernetes apps
+        :return:
+        """
         k8_loader = kube_config.KubeConfigLoader(self.config)
         call_config = type.__call__(Configuration)
         k8_loader.load_and_set(call_config)
@@ -80,6 +88,11 @@ class Kubernetes_Operations(object):
         return client.AppsV1Api()
 
     def cluster_role(self, body=None):
+        """
+        cluster roles for the kubernetes
+        :param body:
+        :return:
+        """
         k8_loader = kube_config.KubeConfigLoader(self.config)
         call_config = type.__call__(Configuration)
         k8_loader.load_and_set(call_config)
@@ -87,6 +100,11 @@ class Kubernetes_Operations(object):
         return client.apis.RbacAuthorizationV1Api().create_cluster_role_with_http_info(body=body)
 
     def cluster_role_binding(self, body=None):
+        """
+        cluster role binding of kubernetes
+        :param body:
+        :return:
+        """
         k8_loader = kube_config.KubeConfigLoader(self.config)
         call_config = type.__call__(Configuration)
         k8_loader.load_and_set(call_config)
@@ -351,16 +369,16 @@ class Kubernetes_Operations(object):
         try:
             url = '%s/apis/rbac.authorization.k8s.io/v1/roles' % cluster_url
             headers = {
-                'Authorization': "Bearer " + token,
+                'Authorization': 'Bearer ' + token,
             }
-            response = requests.request("GET", url, headers=headers, verify=False)
+            response = requests.request('GET', url, headers=headers, verify=False)
             if response.status_code != 200:
                 raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             url = '%s/apis/rbac.authorization.k8s.io/v1/clusterroles' % cluster_url
             headers = {
-                'Authorization': "Bearer " + token,
+                'Authorization': 'Bearer ' + token,
             }
-            response_cluster_roles = requests.request("GET", url, headers=headers, verify=False)
+            response_cluster_roles = requests.request('GET', url, headers=headers, verify=False)
             if response_cluster_roles.status_code != 200:
                 raise Exception('for url %s : %s' % (url, json.loads(response_cluster_roles.text).get('message')))
             cluster_roles_list = json.loads(response_cluster_roles.text)

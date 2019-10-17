@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view
 from cluster.alibaba.compute_service import Alibaba_ECS
 from cluster.alibaba.container_service import Alibaba_CS
 from cluster.others.miscellaneous_operation import key_validations_cluster_provisioning, get_access_key_secret_key_list, \
-    get_grouped_credential_list, check_for_provider_id
+    get_grouped_credential_list, check_for_provider_id, insert_or_update_cluster_details
 
 
 @api_view(['GET'])
@@ -79,6 +79,100 @@ def alibaba_region_list(request):
             'is_successful': False
         })
     finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['GET'])
+def alibaba_instance_list(request):
+    """
+    get the list of the available instances
+    :param request:
+    :return:
+    """
+    instance_list = []
+    api_response = {'is_successful': True,
+                    'details': instance_list,
+                    'error': None}
+    access_flag = True
+    zone_list_length = 0
+    valid_json_keys = ['user_id',
+                       'provider_id',
+                       'region_id',
+                       'zone_id_list']
+    try:
+        json_request = json.loads(request.body)
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            zone_id_temp = json_request.get('zone_id_list')
+            region_id = json_request.get('region_id')
+            zone_list = [str(item) for item in zone_id_temp]
+            zone_list_length = len(zone_list)
+            # Fetching access keys and secret keys from db
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            if not error:
+                access_key_secret_key_list = json.loads(access_key_secret_key_list)
+                unique_access_key_list = []
+                if len(list(access_key_secret_key_list)) > 0:
+                    # creating unique list of access key
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key.get('client_id'))
+                for access_key in unique_access_key_list:
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') == access_key and access_key_secret_key.get(
+                                'id') == int(provider_id):
+                            access_flag = False
+                            alibaba_ecs = Alibaba_ECS(
+                                ali_access_key=access_key_secret_key.get('client_id'),
+                                ali_secret_key=access_key_secret_key.get('client_secret'),
+                                region_id=region_id
+                            )
+                            for zone_id in zone_list:
+                                instances = {'zone_id': zone_id,
+                                             'instances': None,
+                                             'error': None}
+                                error, response = alibaba_ecs.list_instances(zone_id)
+                                if not error:
+                                    instances.update({'instances': response})
+                                #
+                                else:
+                                    instances.update({'error': response,
+                                                      })
+                                instance_list.append(instances.copy())
+
+                if access_flag:
+                    api_response.update({'is_successful': False,
+                                         'error': 'Invalid provider_id or no data available.'})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': 'Invalid user_id or no data available.'})
+
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        # Update error and is_successful key  if all the zone ids are invalid
+        error_count = 0
+        error_msg = None
+        for item in api_response.get('details'):
+            error_msg = item.get('error')
+            if error_msg is not None:
+                error_count += 1
+        if error_count == zone_list_length:
+            api_response.update({'is_successful': False,
+                                 'error': error_msg})
         return JsonResponse(api_response, safe=False)
 
 
@@ -162,9 +256,9 @@ def alibaba_network_details(request):
     :param request:
     :return:
     """
-    api_response = {"is_successful": True,
-                    "vpc_list": [],
-                    "error": None}
+    api_response = {'is_successful': True,
+                    'vpc_list': [],
+                    'error': None}
     access_flag = True
     try:
         json_request = json.loads(request.body)
@@ -1205,7 +1299,6 @@ def all_stateful_sets_details(request):
                         error, result = alibaba_cs.get_all_stateful_set_details()
 
                         if not error:
-                            # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': result})
@@ -1225,8 +1318,6 @@ def all_stateful_sets_details(request):
             else:
                 api_response.update({'is_successful': False,
                                      'error': response})
-
-
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1442,7 +1533,6 @@ def all_config_map_details(request):
                 api_response.update({'is_successful': False,
                                      'error': response})
 
-
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1473,7 +1563,6 @@ def all_ingress_details(request):
                 'error': response.get('error'),
                 'is_successful': False
             })
-
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
@@ -1482,7 +1571,6 @@ def all_ingress_details(request):
                 # groups the common credentials according to the access key
                 error, response = get_grouped_credential_list(response)
                 if not error:
-
                     for credential in response:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
@@ -1710,6 +1798,165 @@ def all_cluster_config_details(request):
                                      'error': response})
 
 
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def create_kubernetes_cluster(request):
+    """
+    Create the kubernetes cluster on the alibaba cloud
+    :param request:
+    :return:
+    """
+    api_response = {
+        'is_successful': True,
+        'cluster_detail': {},
+        'error': None
+    }
+    cluster_info_db = {}
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'request_body']
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            cluster_request_body = json_request.get('request_body')
+            # Fetching access keys and secret keys from db
+            error, response = get_access_key_secret_key_list(user_id)
+            if not error:
+                error, response = check_for_provider_id(provider_id, response)
+                if not error:
+                    # if provider_id present in credentials from database
+                    alibaba_cs = Alibaba_CS(
+                        ali_access_key=response.get('client_id'),
+                        ali_secret_key=response.get('client_secret'),
+                        region_id='default'
+                    )
+                    error, response = alibaba_cs.create_cluster(cluster_request_body)
+                    if not error:
+                        # application successfully created.
+
+                        api_response.update({
+                            'cluster_detail': response
+                        })
+
+                        cluster_info_db.update({
+                            'is_insert': True,
+                            'user_id': int(user_id),
+                            'provider_id': int(provider_id),
+                            'cluster_id': str(response.get('cluster_id')),
+                            'cluster_details': json.dumps(cluster_request_body),
+                            'status': 'Initiated',
+                            'operation': 'created from cloudbrain', })
+                        error, response = insert_or_update_cluster_details(cluster_info_db)
+                        if error:
+                            response.update({'is_successful': False,
+                                             'error': 'Cluster created but error while inserting data into database'})
+                    else:
+                        # application creation failed.
+                        raise Exception(response)
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response)
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['DELETE'])
+def delete_kubernetes_cluster(request):
+    """
+    Delete the kubernetes cluster on the alibaba cloud
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'error': None}
+    cluster_info_db = {}
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'cluster_id']
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            cluster_id = json_request.get('cluster_id')
+            # Fetching access keys and secret keys from db
+            error, response = get_access_key_secret_key_list(user_id)
+            if not error:
+                error, response = check_for_provider_id(provider_id, response)
+                if not error:
+                    # if provider_id present in credentials from database
+                    alibaba_cs = Alibaba_CS(
+                        ali_access_key=response.get('client_id'),
+                        ali_secret_key=response.get('client_secret'),
+                        region_id='default'
+                    )
+                    error, response = alibaba_cs.is_cluster_exist(cluster_id)
+                    if not error:
+                        if response:
+                            # If cluster exists
+                            error, response = alibaba_cs.delete_cluster(cluster_id)
+                            if not error:
+                                if not response:
+                                    raise Exception('Unable to delete the cluster')
+                                else:
+                                    # Database entry for delete
+                                    cluster_info_db.update({
+                                        'is_insert': True,
+                                        'user_id': int(user_id),
+                                        'provider_id': int(provider_id),
+                                        'cluster_id': cluster_id,
+                                        'cluster_details': {},
+                                        'status': 'Deleted',
+                                        'operation': 'Deleted from cloudbrain', })
+                                    error, response = insert_or_update_cluster_details(cluster_info_db)
+                                    if error:
+                                        response.update({'is_successful': False,
+                                                         'error': 'Cluster deleted but error while updating in database'})
+
+                            else:
+                                # Unable to delete the cluster
+                                raise Exception(response)
+                        else:
+                            raise Exception(
+                                'Cluster does not exist in the current provider or is in creating or deleting state.')
+                    else:
+                        # Cluster does not exist
+                        raise Exception(response)
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response)
     except Exception as e:
         api_response.update({
             'error': e.message,

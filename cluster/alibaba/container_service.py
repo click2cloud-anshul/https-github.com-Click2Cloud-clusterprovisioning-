@@ -3,6 +3,7 @@ import os
 from os import path
 
 import yaml
+from aliyunsdkcore.acs_exception.exceptions import ServerException
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.request import CommonRequest
 from aliyunsdkros.request.v20190910.GetStackRequest import GetStackRequest
@@ -30,7 +31,14 @@ class Alibaba_CS:
         self.clusters_folder_directory = ''
 
     def create_cluster(self, request_body=None):
+        """
+        Create the cluster in the alibaba cloud
+        :param request_body:
+        :return:
+        """
         # return True, {"created": "msg", "access_key": self.access_key, "secret_key": self.secret_key, "cluster_id":"fdsfdsfsdafdsf"}
+        error = False
+        response = None
         try:
             client = AcsClient(self.access_key, self.secret_key, self.region_id)
 
@@ -48,13 +56,34 @@ class Alibaba_CS:
             body = json.dumps(request_body)
             request.set_content(body.encode('utf-8'))
 
-            response = client.do_action_with_exception(request)
-            create_clusters_response = json.loads(response)
-            return True, create_clusters_response
-        except Exception as e:
-            return False, e.message
+            result = client.do_action_with_exception(request)
+            response = json.loads(result)
 
-    def delete_cluster(self, cluster_id=None):
+        except ServerException as e:
+            error = True
+            error_codes = [400]
+            if e.http_status in error_codes:
+                error_message_splitted = str(e.message).split('ServerResponseBody: ')
+                response = '%s %s' % (
+                    'Error while creating cluster.', json.loads(error_message_splitted[1]).get('message'))
+
+            else:
+                response = 'Unable to create the cluster'
+        except Exception as e:
+            error = True
+            response = e.message
+
+        finally:
+            return error, response
+
+    def delete_cluster(self, cluster_id):
+        """
+        Delete cluster
+        :param cluster_id:
+        :return:
+        """
+        error = False
+        response = False
         try:
             client = AcsClient(self.access_key, self.secret_key, self.region_id)
 
@@ -71,13 +100,31 @@ class Alibaba_CS:
             body = ''''''
             request.set_content(body.encode('utf-8'))
 
-            response = client.do_action_with_exception(request)
-            if len(str(response)) == 0:
-                response = '{"message":"' + "Delete request accepted for cluster id " + cluster_id + '"}'
-            delete_clusters_response = json.loads(response)
-            return True, delete_clusters_response
+            result = client.do_action_with_exception(request)
+            # response is None when cluster is deleted successfully
+            if len(result) == 0:
+                response = True
+            else:
+                response = False
+        except ServerException as e:
+            error = True
+            # error_codes = [400]
+            if e.http_status == 400:
+                error_message_splitted = str(e.message).split('ServerResponseBody: ')
+                if len(error_message_splitted) > 1:
+                    response = '%s %s' % (
+                        'Error while deleting the cluster.', json.loads(error_message_splitted[1]).get('message'))
+                else:
+                    response = '%s %s' % ('Error while deleting the cluster.', e.message)
+            elif e.http_status == 404:
+                response = '%s %s' % ('Error while deleting the cluster.', e.message)
+            else:
+                response = 'Unable to Delete the cluster'
         except Exception as e:
-            return False, e.message
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
     def check_database_state_and_update(self, cluster=None):
         """
@@ -1924,6 +1971,35 @@ class Alibaba_CS:
                 # skip if any error occurred for a particular key
                 response = result
 
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def is_cluster_exist(self, cluster_id):
+        """
+        Check whether cluster exist or not
+        :param cluster_id:
+        :return:
+        """
+        error = False
+        response = False
+        try:
+            error, result = self.describe_all_clusters()
+            if not error:
+                for cluster in result:
+                    if cluster_id == cluster.get('cluster_id'):
+                        if 'running' == cluster.get('state'):
+                            response = True
+                        elif 'failed' == cluster.get('state'):
+                            response = True
+                        # if cluster is present response is true otherwise false
+                        else:
+                            #  Creating state or in deleting state
+                            response = False
+            else:
+                raise Exception(result)
         except Exception as e:
             error = True
             response = e.message
