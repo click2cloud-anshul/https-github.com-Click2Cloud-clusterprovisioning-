@@ -29,75 +29,6 @@ class Alibaba_CS:
         self.retry_counter = 0
         self.clusters_folder_directory = ''
 
-    def cluster_details(self, cluster_id=None):
-        try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-            cluster_info = {}
-            access_flag = True
-            if len(describe_clusters_response) == 0:
-                return False, "No clusters are present in the current account"
-            for cluster in describe_clusters_response:
-                if cluster_id in cluster["cluster_id"]:
-                    access_flag = False
-                    cluster_info = {"cluster_info": cluster}
-                    cluster_info.update(cluster_info)
-                    request = GetStackRequest()
-                    request.set_accept_format('json')
-                    if str(cluster['state']).__contains__('failed'):
-                        flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                        if flag:
-                            for cluster_info_db in cluster_info_db_list:
-                                if str(cluster_info_db[5]).__contains__('Initiated'):
-                                    new_params = {}
-                                    new_params['is_insert'] = False
-                                    new_params['user_id'] = cluster_info_db[1]
-                                    new_params['provider_id'] = cluster_info_db[2]
-                                    new_params['cluster_id'] = cluster_info_db[3]
-                                    new_params['cluster_details'] = json.dumps(cluster_info)
-                                    new_params['status'] = 'Failed'
-                                    new_params['operation'] = 'created from cloudbrain'
-                                    insert_or_update_cluster_details(new_params)
-                    parameters = cluster["parameters"]
-                    request.set_StackId(str(parameters["ALIYUN::StackId"]))
-                    client = AcsClient(ak=self.access_key, secret=self.secret_key, region_id=str(cluster["region_id"]))
-                    get_stack_response = client.do_action_with_exception(request)
-                    get_stack_json = json.loads(get_stack_response)
-                    stack_info = {"stack_info": get_stack_json}
-                    cluster_info.update(stack_info)
-                    if str(cluster['state']).__contains__('running'):
-                        flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                        if flag:
-                            for cluster_info_db in cluster_info_db_list:
-                                if str(cluster_info_db[5]).__contains__('Initiated'):
-                                    new_params = {}
-                                    new_params['is_insert'] = False
-                                    new_params['user_id'] = cluster_info_db[1]
-                                    new_params['provider_id'] = cluster_info_db[2]
-                                    new_params['cluster_id'] = cluster_info_db[3]
-                                    new_params['cluster_details'] = json.dumps(cluster_info)
-                                    new_params['status'] = 'Running'
-                                    new_params['operation'] = 'created from cloudbrain'
-                                    insert_or_update_cluster_details(new_params)
-
-            if access_flag:
-                return False, 'Invalid cluster_id ' + cluster_id + ' provided.'
-            return True, cluster_info
-        except Exception as e:
-            return False, e.message
-
     def create_cluster(self, request_body=None):
         # return True, {"created": "msg", "access_key": self.access_key, "secret_key": self.secret_key, "cluster_id":"fdsfdsfsdafdsf"}
         try:
@@ -145,163 +76,6 @@ class Alibaba_CS:
                 response = '{"message":"' + "Delete request accepted for cluster id " + cluster_id + '"}'
             delete_clusters_response = json.loads(response)
             return True, delete_clusters_response
-        except Exception as e:
-            return False, e.message
-
-    def get_all_clusters(self):
-        try:
-
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            cluster_details_list = []
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                request = GetStackRequest()
-                request.set_accept_format('json')
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_info_db[4])
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if 'parameters' in cluster and cluster["parameters"] is not None:
-                    parameters = cluster["parameters"]
-                    if "ALIYUN::StackId" in parameters:
-                        request.set_StackId(str(parameters["ALIYUN::StackId"]))
-                        client = AcsClient(ak=self.access_key, secret=self.secret_key,
-                                           region_id=str(cluster["region_id"]))
-                        get_stack_response = client.do_action_with_exception(request)
-                        get_stack_json = json.loads(get_stack_response)
-                        stack_info = {"stack_info": get_stack_json}
-                        cluster_details.update(stack_info)
-                        cluster_details_list.append(cluster_details)
-                    else:
-                        stack_info = {"stack_info": 'Stack Not Created'}
-                        cluster_details.update(stack_info)
-                        cluster_details_list.append(cluster_details)
-                else:
-                    stack_info = {"stack_info": 'Stack Not Created'}
-                    cluster_details.update(stack_info)
-                    cluster_details_list.append(cluster_details)
-            return True, cluster_details_list
-        except Exception as e:
-            return False, e.message
-
-    def get_all_cluster_config(self):
-        try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-
-            cluster_details_list = []
-            if len(describe_clusters_response) == 0:
-                return True, []
-            for cluster in describe_clusters_response:
-                cluster_id_list = {}
-                cluster_info = {}
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                cluster_details = {}
-                                cluster_info = {"cluster_info": cluster}
-                                cluster_details.update(cluster_info)
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('running'):
-                    cluster_info = {"cluster_id": cluster['cluster_id'], "cluster_name": cluster['name']}
-                    cluster_id_list.update(cluster_info)
-                cluster_details_list.append(cluster_id_list)
-            cluster_config_details_list = []
-            if len(cluster_details_list) > 0:
-                for cluster_info in cluster_details_list:
-                    client = AcsClient(self.access_key, self.secret_key, 'default')
-                    request = CommonRequest()
-                    request.set_accept_format('json')
-                    request.set_method('GET')
-                    request.set_protocol_type('https')  # https | http
-                    request.set_domain('cs.aliyuncs.com')
-                    request.set_version('2015-12-15')
-
-                    request.add_query_param('RegionId', "default")
-                    request.add_header('Content-Type', 'application/json')
-                    request.set_uri_pattern('/api/v2/k8s/' + cluster_info['cluster_id'] + '/user_config')
-                    body = ''''''
-                    request.set_content(body.encode('utf-8'))
-                    response = client.do_action_with_exception(request)
-                    cluster_config = json.loads(response)
-                    if 'config' in cluster_config:
-                        # json.dumps(yaml.load(cluster_config['config']))
-                        cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                        cluster_config_details_list.append(
-                            {"cluster_id": cluster_info['cluster_id'], "cluster_name": cluster_info['cluster_name'],
-                             "cluster_config": json.loads(cluster_config)}
-                        )
-            return True, cluster_config_details_list
         except Exception as e:
             return False, e.message
 
@@ -354,9 +128,6 @@ class Alibaba_CS:
             response = e.message
         finally:
             return error, response
-
-    def get_cluster_config(self):
-        pass
 
     def describe_all_clusters(self):
         """
@@ -469,7 +240,7 @@ class Alibaba_CS:
                                                                 'pod_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -557,7 +328,7 @@ class Alibaba_CS:
                                                                 'namespace_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -645,7 +416,7 @@ class Alibaba_CS:
                                                                 'role_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -734,7 +505,7 @@ class Alibaba_CS:
                                                                 'persistent_volume_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -823,7 +594,7 @@ class Alibaba_CS:
                                                                 'persistent_volume_claim_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -912,7 +683,7 @@ class Alibaba_CS:
                                                                 'deployment_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1000,7 +771,7 @@ class Alibaba_CS:
                                                                 'secret_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1088,7 +859,7 @@ class Alibaba_CS:
                                                                 'node_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1176,7 +947,7 @@ class Alibaba_CS:
                                                                 'service_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1264,7 +1035,7 @@ class Alibaba_CS:
                                                                 'cron_job_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1352,7 +1123,7 @@ class Alibaba_CS:
                                                                 'job_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1441,7 +1212,7 @@ class Alibaba_CS:
                                                                 'storage_class_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1530,7 +1301,7 @@ class Alibaba_CS:
                                                                 'replication_controller_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1619,7 +1390,7 @@ class Alibaba_CS:
                                                                 'stateful_set_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1708,7 +1479,7 @@ class Alibaba_CS:
                                                                 'replica_set_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1797,7 +1568,7 @@ class Alibaba_CS:
                                                                 'daemon_set_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1886,7 +1657,7 @@ class Alibaba_CS:
                                                                 'config_map_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -1975,7 +1746,7 @@ class Alibaba_CS:
                                                                 'ingress_details': response
                                                             })
                                                         else:
-                                                            return error, cluster_details
+                                                            cluster_details.update({'error': response})
                                                     else:
                                                         cluster_details.update(
                                                             {'error': 'Unable to find the cluster endpoint'})
@@ -2012,84 +1783,149 @@ class Alibaba_CS:
             return error, response
 
     def create_from_yaml(self, cluster_id=None, data=None):
-        print 'll'
+        """
+        Create the kubernetes object on the cluster in alibaba console
+        :param cluster_id:
+        :param data:
+        :return:
+        """
+        response = None
+        error = False
         try:
-            client = AcsClient(self.access_key, self.secret_key, 'default')
-            request = CommonRequest()
-            request.set_accept_format('json')
-            request.set_method('GET')
-            request.set_protocol_type('https')  # https | http
-            request.set_domain('cs.aliyuncs.com')
-            request.set_version('2015-12-15')
-            request.add_query_param('RegionId', "default")
-            request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters')
-            body = ''''''
-            request.set_content(body.encode('utf-8'))
-            response = client.do_action_with_exception(request)
-            describe_clusters_response = json.loads(response)
-            access_flag = True
-            if len(describe_clusters_response) == 0:
-                return False, "No clusters are present in the current account"
-            for cluster in describe_clusters_response:
-                cluster_details = {}
-                cluster_info = {"cluster_info": cluster}
-                cluster_details.update(cluster_info)
-                if str(cluster['state']).__contains__('running'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_details)
-                                new_params['status'] = 'Running'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if str(cluster['state']).__contains__('failed'):
-                    flag, cluster_info_db_list = get_db_info_using_cluster_id(cluster['cluster_id'])
-                    if flag:
-                        for cluster_info_db in cluster_info_db_list:
-                            if str(cluster_info_db[5]).__contains__('Initiated'):
-                                new_params = {}
-                                new_params['is_insert'] = False
-                                new_params['user_id'] = cluster_info_db[1]
-                                new_params['provider_id'] = cluster_info_db[2]
-                                new_params['cluster_id'] = cluster_info_db[3]
-                                new_params['cluster_details'] = json.dumps(cluster_info_db[4])
-                                new_params['status'] = 'Failed'
-                                new_params['operation'] = 'created from cloudbrain'
-                                insert_or_update_cluster_details(new_params)
-                if cluster_id in cluster["cluster_id"]:
-                    if str(cluster['state']).__contains__('running') and str(cluster['parameters']['Eip']).__contains__(
-                            'True'):
-                        access_flag = False
-                        client1 = AcsClient(self.access_key, self.secret_key, 'default')
-                        request = CommonRequest()
-                        request.set_accept_format('json')
-                        request.set_method('GET')
-                        request.set_protocol_type('https')  # https | http
-                        request.set_domain('cs.aliyuncs.com')
-                        request.set_version('2015-12-15')
-                        request.add_query_param('RegionId', "default")
-                        request.add_header('Content-Type', 'application/json')
-                        request.set_uri_pattern('/api/v2/k8s/' + cluster['cluster_id'] + '/user_config')
-                        body = ''''''
-                        request.set_content(body.encode('utf-8'))
-                        response = client1.do_action_with_exception(request)
-                        cluster_config = json.loads(response)
-                        self.clusters_folder_directory = BASE_DIR
-                        if 'config' in cluster_config:
-                            os.chdir(self.clusters_folder_directory)
-                            # json.dumps(yaml.load(cluster_config['config']))
-                            cluster_config = json.dumps(yaml.load(cluster_config['config'], yaml.FullLoader))
-                            file_operation(cluster['cluster_id'], json.loads(cluster_config))
-                            kube_one = Kubernetes_Operations(
-                                configuration_yaml=r"" + path.join(self.clusters_folder_directory, 'clusters',
-                                                                   cluster['cluster_id'], r"config"))
-                            flag, exception_list, names_list = kube_one.create_from_yaml()
+            error, response = self.describe_all_clusters()
+            if not error:
+                describe_clusters_response = response
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster are present in the current cloud provider
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster:
+                                        if 'True' in str(cluster.get('parameters').get('Eip')):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                error, response = k8_obj.create_from_yaml(
+                                                                    cluster_id=cluster_id, data=data)
+                                                                if error:
+                                                                    # If any error occurred while
+                                                                    # creating application using file
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception('Eip is not available, unable to fetch pod details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                            else:
+                                # invalid cluster_id provided
+                                raise Exception('Invalid cluster_id provided.')
+                        else:
+                            raise Exception(response)
+            else:
+                raise Exception(response)
+
         except Exception as e:
-            print e
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def describe_all_cluster_config(self):
+        """
+        get the list of all cluster configs present in alibaba provider
+        :return:
+        """
+        response = None
+        error = False
+        cluster_details_list = []
+        try:
+            error, result = self.describe_all_clusters()
+
+            if not error:
+                # access_key_secret_key['name']: cluster_details_list
+                if len(result) == 0:
+                    response = []
+                else:
+                    for cluster in result:
+                        cluster_details = {
+                            'cluster_id': cluster.get('cluster_id'),
+                            'config': {},
+                            'error': None
+                        }
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                            if not error:
+                                cluster_config = json.loads(response)
+                                if 'config' in cluster_config:
+                                    cluster_config = yaml.load(cluster_config.get('config'), yaml.FullLoader)
+                                    cluster_details.update({
+                                        'config': cluster_config
+                                    })
+                                else:
+                                    cluster_details.update({
+                                        'error': 'Unable to find cluster config details'
+                                    })
+                            else:
+                                cluster_details.update({
+                                    'error': response
+                                })
+                        else:
+                            cluster_details.update({
+                                'error': response
+                            })
+                        cluster_details_list.append(cluster_details)
+                    response = cluster_details_list
+            else:
+                # skip if any error occurred for a particular key
+                response = result
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response

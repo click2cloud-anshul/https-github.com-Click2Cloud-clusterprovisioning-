@@ -60,7 +60,7 @@ def key_validations_cluster_provisioning(request_keys=None, validation_keys=None
                 if not isinstance(request_keys.get(key), int):
                     missing_value_flag = True
                     missing_values.append(key)
-            elif key in ['region_id']:
+            elif key in ['region_id', 'cluster_id', 'application_body']:
                 # checking string length and checking the type of value is string only
                 if (len(str(request_keys.get(key)).strip())) == 0 or not isinstance(request_keys.get(key), unicode):
                     missing_value_flag = True
@@ -228,6 +228,33 @@ def get_grouped_credential_list(credentials):
             })
             credential_list.append(credential_json)
         response = credential_list
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        return error, response
+
+
+def check_for_provider_id(provider_id, credentials):
+    """
+    checks for the provider_id present in credentials
+    :param provider_id:
+    :param credentials:
+    :return:
+    """
+    error = False
+    response = None
+    try:
+        credentials = json.loads(credentials)
+        for item in credentials:
+            if item.get('id') == provider_id:
+                error = False
+                response = item
+                break
+            else:
+                error = True
+        if error:
+            response = 'No such provider exists'
     except Exception as e:
         error = True
         response = e.message

@@ -1,5 +1,7 @@
 import base64
 import json
+import uuid
+from _yaml import ScannerError
 from os import path
 
 import requests
@@ -9,7 +11,40 @@ from kubernetes.client import Configuration
 from kubernetes.config import kube_config
 import os
 
+from kubernetes.utils import FailToCreateError
+
 from clusterProvisioningClient.settings import BASE_DIR
+
+
+def create_file_for_app_deploy(cluster_id, data):
+    """
+        create the yaml file using data for deploy app on kubernetes cluster with its id as a directory name
+        :param cluster_id:
+        :param data:
+        :return:
+        """
+    error = False
+    response = None
+    try:
+        file_name = uuid.uuid1().hex
+        path = os.path.join(BASE_DIR, 'cluster', 'dumps', cluster_id)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        data = base64.b64decode(data)
+        with open(os.path.join(path, file_name), "w+") as outfile:
+            outfile.write(data)
+        path = os.path.join(BASE_DIR, 'cluster', 'dumps', cluster_id, file_name)
+        if os.stat(path).st_size == 0 or not os.path.exists(path):
+            raise Exception('Yaml or json file is invalid')
+        response = path
+    except Exception as e:
+        response = e.message
+        if isinstance(e, TypeError):
+            response = 'Incorrect Padding'
+        error = True
+
+    finally:
+        return error, response
 
 
 class Kubernetes_Operations(object):
@@ -58,53 +93,96 @@ class Kubernetes_Operations(object):
         Configuration.set_default(call_config)
         return client.apis.RbacAuthorizationV1Api().create_cluster_role_binding_with_http_info(body=body)
 
-    def create_from_yaml(self, yaml_file=None):
-        k8_loader = kube_config.KubeConfigLoader(self.config)
-        call_config = type.__call__(Configuration)
+    def create_from_yaml(self, cluster_id, data):
+        """
+        Creates a new app on kubernetes cluster using data
+        :param cluster_id: 
+        :param data:
+        :return: 
+        """
+        app = {
+            'app_name': None,
+            'app_kind': None
+        }
+        response = None
+        error = False
+
         try:
-            k8_loader.load_and_set(call_config)
-        except Exception as e:
-            return 0, e
-        Configuration.set_default(call_config)
-        k8s_client = client.api_client.ApiClient()
-        exception_list = []
-        names_list = []
-        try:
-            if os.stat(path.abspath(yaml_file)).st_size == 0 or not os.path.exists(path.abspath(yaml_file)):
-                raise Exception
-            with open(path.abspath(yaml_file)) as f:
-                yml_document_all = yaml.safe_load_all(f)
-                for yml_document in yml_document_all:
-                    if "List" in yml_document["kind"]:
-                        for yml_object in yml_document["items"]:
-                            names_list.append(yml_object['metadata']['name'])
-                    else:
-                        names_list.append(yml_document['metadata']['name'])
-            try:
-                utils.create_from_yaml(k8s_client=k8s_client, yaml_file=yaml_file)
-                return -1, exception_list, names_list
-            except Exception as e:
+            error, response = create_file_for_app_deploy(cluster_id, data)
+
+            if not error:
+                yaml_file_path = response
+                kube_loader = kube_config.KubeConfigLoader(self.config)
+                call_config = type.__call__(Configuration)
                 try:
-                    for api_exceptionse in e.api_exceptions:
-                        exception_from_create = json.loads(api_exceptionse.body)
-                        string_to_append = ''
-                        if 'details' in exception_from_create:
-                            if 'group' in exception_from_create['details']:
-                                string_to_append = exception_from_create['details']['group']
-                            if 'kind' in exception_from_create['details']:
-                                if len(string_to_append) > 0:
-                                    string_to_append = string_to_append + '.'
-                                string_to_append = string_to_append + exception_from_create['details']['kind']
-                            if 'name' in exception_from_create['details']:
-                                if len(string_to_append) > 0:
-                                    string_to_append = string_to_append + '.'
-                                string_to_append = string_to_append + exception_from_create['details']['name']
-                        exception_list.append(string_to_append + ' ' + exception_from_create['reason'])
-                    return 1, exception_list, names_list
+                    kube_loader.load_and_set(call_config)
                 except Exception:
-                    return 2, None, None
-        except Exception:
-            return 0, None, None
+                    # If cluster is unavailable or unreachable.
+                    raise Exception('Cluster is unreachable')
+                Configuration.set_default(call_config)
+                kube_client = client.api_client.ApiClient()
+                # kubernetes client object
+                exception = None
+                flag = False
+                try:
+                    # App creation on kubernetes cluster
+                    utils.create_from_yaml(k8s_client=kube_client, yaml_file=yaml_file_path)
+                    flag = True
+                except Exception as e:
+                    exception = e
+                    flag = False
+                if flag:
+                    # if provided yaml or json is valid
+                    with open(path.abspath(yaml_file_path)) as file:
+                        yml_document_all = yaml.safe_load_all(file)
+                        created_app_list = []
+                        for yml_document in yml_document_all:
+                            if 'List' in yml_document.get('kind'):
+                                for yml_object in yml_document.get('items'):
+                                    app.update({
+                                        'app_name': yml_object.get('metadata').get('name'),
+                                        'app_kind': yml_document.get('kind')
+                                    })
+                            else:
+                                app.update({
+                                    'app_name': yml_document.get('metadata').get('name'),
+                                    'app_kind': yml_document.get('kind')
+                                })
+                            created_app_list.append(app)
+                            error = False
+                            response = created_app_list
+                else:
+                    # if provided yaml or json is invalid
+                    error = True
+                    try:
+
+                        if isinstance(exception, KeyError):
+                            response = 'Key is missing ' + exception.message
+                        elif isinstance(exception, ValueError):
+                            response = 'Value is missing ' + exception.message
+                        elif isinstance(exception, FailToCreateError):
+                            # response_dict.update({'error': e.api_exceptions})
+                            api_exception_list = exception.api_exceptions
+                            failed_list = []
+                            for api_exceptions in api_exception_list:
+                                json_error_body = json.loads(api_exceptions.body)
+                                if 'message' in json_error_body:
+                                    failed_list.append(json_error_body.get('message'))
+                            response = failed_list
+                        elif isinstance(exception, ScannerError):
+                            response = 'Invalid yaml/json'
+                        else:
+                            response = exception.message
+                    except Exception as e:
+                        response = e.message
+            else:
+                # if yaml file is not created.
+                raise Exception(response)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
     def get_token(self):
         """
@@ -227,7 +305,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -250,7 +329,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -269,20 +349,22 @@ class Kubernetes_Operations(object):
         error = False
         response = None
         try:
-            url = cluster_url + "/apis/rbac.authorization.k8s.io/v1/roles"
+            url = '%s/apis/rbac.authorization.k8s.io/v1/roles' % cluster_url
             headers = {
                 'Authorization': "Bearer " + token,
             }
             response = requests.request("GET", url, headers=headers, verify=False)
-
-            url = cluster_url + "/apis/rbac.authorization.k8s.io/v1/clusterroles"
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
+            url = '%s/apis/rbac.authorization.k8s.io/v1/clusterroles' % cluster_url
             headers = {
                 'Authorization': "Bearer " + token,
             }
-            response1 = requests.request("GET", url, headers=headers, verify=False)
-            cluster_roles_list = json.loads(response1.text)
+            response_cluster_roles = requests.request("GET", url, headers=headers, verify=False)
+            if response_cluster_roles.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response_cluster_roles.text).get('message')))
+            cluster_roles_list = json.loads(response_cluster_roles.text)
             roles_list = json.loads(response.text)
-            error = False
             response = {'cluster_role_list': cluster_roles_list,
                         'role_list': roles_list}
         except Exception as e:
@@ -306,7 +388,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -329,7 +412,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -352,7 +436,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -375,7 +460,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -398,7 +484,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -421,7 +508,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -444,7 +532,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -467,7 +556,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -490,7 +580,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -513,7 +604,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -536,7 +628,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -559,7 +652,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -582,7 +676,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -605,7 +700,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True
@@ -628,7 +724,8 @@ class Kubernetes_Operations(object):
                 'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
-            error = False
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
         except Exception as e:
             error = True

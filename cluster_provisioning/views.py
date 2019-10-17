@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view
 from cluster.alibaba.compute_service import Alibaba_ECS
 from cluster.alibaba.container_service import Alibaba_CS
 from cluster.others.miscellaneous_operation import key_validations_cluster_provisioning, get_access_key_secret_key_list, \
-    get_grouped_credential_list
+    get_grouped_credential_list, check_for_provider_id
 
 
 @api_view(['GET'])
@@ -80,23 +80,6 @@ def alibaba_region_list(request):
         })
     finally:
         return JsonResponse(api_response, safe=False)
-
-
-@api_view(['GET'])
-def all_cluster_details(request):
-    """
-    get the details of all clusters
-    :param request:
-    :return:
-    """
-    api_response = {}
-    access_flag = True
-    try:
-        pass
-    except Exception as e:
-        pass
-    finally:
-        return JsonResponse({'done': 'successfully'}, safe=False)
 
 
 @api_view(['GET'])
@@ -1521,9 +1504,204 @@ def all_ingress_details(request):
                                 'cluster_list': [],
                                 'error': result})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_ingress_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'all_ingress_details': all_provider_cluster_details})
+                else:
+                    api_response.update({'is_successful': False,
+                                         'error': response})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': response})
+
+
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def create_app(request):
+    """
+    create application on kubernetes cluster on the alibaba
+    :param request:
+    :return:
+    """
+    api_response = {
+        'is_successful': True,
+        'created_object_details': None,
+        'error': None}
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'cluster_id', 'application_body']
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if not error:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            cluster_id = json_request.get('cluster_id')
+            application_body = json_request.get('application_body')
+            # Fetching access keys and secret keys from db
+            error, response = get_access_key_secret_key_list(user_id)
+            if not error:
+                error, response = check_for_provider_id(provider_id, response)
+                if not error:
+                    # if provider_id present in credentials from database
+                    alibaba_cs = Alibaba_CS(
+                        ali_access_key=response.get('client_id'),
+                        ali_secret_key=response.get('client_secret'),
+                        region_id='default'
+                    )
+                    error, response = alibaba_cs.create_from_yaml(cluster_id=cluster_id, data=application_body)
+                    if not error:
+                        # application successfully created.
+                        api_response = {
+                            'created_object_details': response
+                        }
+                    else:
+                        # application creation failed.
+                        raise Exception(response)
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response)
+        else:
+            raise Exception(response.get('error'))
+    except Exception as e:
+        api_response.update({
+            'is_successful': False,
+            'error': e.message
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['GET'])
+def all_cluster_details(request):
+    """
+    get the details of clusters in all providers
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'all_cluster_details': [],
+                    'error': None}
+    all_provider_cluster_details = []
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id']
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+
+        else:
+            user_id = json_request.get('user_id')
+            # Fetching access keys and secret keys from db
+            error, response = get_access_key_secret_key_list(user_id)
+            if not error:
+                # groups the common credentials according to the access key
+                error, response = get_grouped_credential_list(response)
+                if not error:
+
+                    for credential in response:
+                        providers_cluster_info = {}
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=credential.get('access_key'),
+                            ali_secret_key=credential.get('secret_key'),
+                            region_id='default'
+                        )
+                        error, result = alibaba_cs.describe_all_clusters()
+
+                        if not error:
+                            # access_key_secret_key['name']: cluster_details_list
+                            providers_cluster_info.update({
+                                'provider_names': credential.get('provider_name_list'),
+                                'clusters': result})
+                        else:
+                            # skip if any error occurred for a particular key
+                            providers_cluster_info.update({
+                                'provider_names': credential.get('provider_name_list'),
+                                'clusters': [],
+                                'error': result})
+                        all_provider_cluster_details.append(providers_cluster_info)
+                    api_response.update({'all_cluster_details': all_provider_cluster_details})
+                else:
+                    api_response.update({'is_successful': False,
+                                         'error': response})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': response})
+
+
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['GET'])
+def all_cluster_config_details(request):
+    """
+    get the details of clusters config in all providers
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'all_cluster_config_details': [],
+                    'error': None}
+    all_provider_cluster_details = []
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id']
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+
+        else:
+            user_id = json_request.get('user_id')
+            # Fetching access keys and secret keys from db
+            error, response = get_access_key_secret_key_list(user_id)
+            if not error:
+                # groups the common credentials according to the access key
+                error, response = get_grouped_credential_list(response)
+                if not error:
+
+                    for credential in response:
+                        providers_cluster_info = {}
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=credential.get('access_key'),
+                            ali_secret_key=credential.get('secret_key'),
+                            region_id='default'
+                        )
+                        error, result = alibaba_cs.describe_all_cluster_config()
+
+                        if not error:
+                            providers_cluster_info.update({
+                                'provider_names': credential.get('provider_name_list'),
+                                'clusters': result})
+                        else:
+                            # skip if any error occurred for a particular key
+                            providers_cluster_info.update({
+                                'provider_names': credential.get('provider_name_list'),
+                                'clusters': [],
+                                'error': result})
+                        all_provider_cluster_details.append(providers_cluster_info)
+                    api_response.update({'all_cluster_config_details': all_provider_cluster_details})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response})

@@ -7,7 +7,7 @@ urlpatterns = [
     # url(r'^get-instance-list', views.alibaba_instance_list),
     url(r'^alibaba/get-ssh-keypair-list', views.alibaba_ssh_key_pair_list),
     url(r'^alibaba/get-network-details', views.alibaba_network_details),
-    # url(r'^get-all-clusters-config', views.all_cluster_config),
+    url(r'^alibaba/get-all-clusters-config', views.all_cluster_config_details),
     # url(r'^get-all-clusters-details', views.all_cluster_details),
     url(r'^alibaba/get-all-clusters-details', views.all_cluster_details),
     url(r'^alibaba/get-all-pod-details', views.all_pod_details),
@@ -28,4 +28,5 @@ urlpatterns = [
     url(r'^alibaba/get-all-daemon-set-details', views.all_daemon_set_details),
     url(r'^alibaba/get-all-config-maps-details', views.all_config_map_details),
     url(r'^alibaba/get-all-ingress-details', views.all_ingress_details),
+    url(r'^alibaba/create-application', views.create_app),
 ]
