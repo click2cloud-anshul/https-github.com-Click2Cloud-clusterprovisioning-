@@ -393,7 +393,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch namespace details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -481,7 +481,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch role details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -570,7 +570,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch persistent volume details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -659,7 +659,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch persistent volume claim details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -748,7 +748,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch deployment details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -836,7 +836,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch secret details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -924,7 +924,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch node details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1012,7 +1012,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch service details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1100,7 +1100,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch cron job details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1188,7 +1188,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch job details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1277,7 +1277,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch storage details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1366,7 +1366,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch replication controller details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1455,7 +1455,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch stateful set details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1544,7 +1544,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch replica set details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1633,7 +1633,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch daemon set details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1722,7 +1722,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch config map details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1811,7 +1811,7 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available, unable to fetch pod details'})
+                                        {'error': 'Eip is not available, unable to fetch all ingress details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1899,7 +1899,7 @@ class Alibaba_CS:
                                             else:
                                                 raise Exception(response)
                                         else:
-                                            raise Exception('Eip is not available, unable to fetch pod details')
+                                            raise Exception('Eip is not available, unable to fetch details')
                                     else:
                                         raise Exception(
                                             'Unable to find the parameter for cluster. '
