@@ -14,6 +14,8 @@ import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+manageiq_ip = '192.168.1.182'
+decrypt_credentials_api_endpoint = 'http://%s:3001/api/v1/decryptCredentials' % manageiq_ip
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -77,7 +79,7 @@ DATABASES = {
         'NAME': 'vmdb_development',
         'USER': 'root',
         'PASSWORD': 'smartvm',
-        'HOST': '192.168.1.182',
+        'HOST': manageiq_ip,
         'PORT': '5432'
     },
 }

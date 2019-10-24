@@ -2,9 +2,10 @@ import json
 import os
 import time
 
+import requests
 from django.db import connection
 
-from clusterProvisioningClient.settings import BASE_DIR
+from clusterProvisioningClient.settings import BASE_DIR, decrypt_credentials_api_endpoint
 
 
 def get_access_key_secret_key_list(user_id=None):
@@ -27,6 +28,16 @@ def get_access_key_secret_key_list(user_id=None):
         if result is None:
             error = True
             response = 'Invalid user_id or no data available.'
+        elif len(result) > 0:
+            headers = {'content-type': 'application/json'}
+            # Calling nodejs api for decrypting the alibaba encrypted access keys and secret keys
+            result_api = requests.post(url=decrypt_credentials_api_endpoint, data=response, headers=headers)
+            result_api = json.loads(result_api.content)
+            if result_api.get('is_successful'):
+                response = result_api.get('credentials')
+            else:
+                error = True
+                response = result_api.get('error')
 
     except Exception as ex:
         error = True
@@ -220,7 +231,7 @@ def get_grouped_credential_list(credentials):
     error = False
     response = None
     try:
-        credentials = json.loads(credentials)
+        # credentials = json.loads(credentials)
         credential_list = []
         unique_access_keys = set(item.get('client_id') for item in credentials)
         for access_key in unique_access_keys:

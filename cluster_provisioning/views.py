@@ -37,7 +37,6 @@ def alibaba_region_list(request):
             # Fetching access keys and secret keys from db
             error, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
             if not error:
-                access_key_secret_key_list = json.loads(access_key_secret_key_list)
                 unique_access_key_list = []
                 if len(list(access_key_secret_key_list)) > 0:
                     # creating unique list of access key
@@ -118,7 +117,6 @@ def alibaba_instance_list(request):
             # Fetching access keys and secret keys from db
             error, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
             if not error:
-                access_key_secret_key_list = json.loads(access_key_secret_key_list)
                 unique_access_key_list = []
                 if len(list(access_key_secret_key_list)) > 0:
                     # creating unique list of access key
@@ -205,7 +203,6 @@ def alibaba_ssh_key_pair_list(request):
             # Fetching access keys and secret keys from db
             error, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
             if not error:
-                access_key_secret_key_list = json.loads(access_key_secret_key_list)
                 unique_access_key_list = []
                 if len(list(access_key_secret_key_list)) > 0:
                     # creating unique list of access key
@@ -278,7 +275,6 @@ def alibaba_network_details(request):
             # Fetching access keys and secret keys from db
             error, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
             if not error:
-                access_key_secret_key_list = json.loads(access_key_secret_key_list)
                 unique_access_key_list = []
                 if len(list(access_key_secret_key_list)) > 0:
                     # creating unique list of access key
