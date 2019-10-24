@@ -32,6 +32,8 @@ def get_access_key_secret_key_list(user_id=None):
             headers = {'content-type': 'application/json'}
             # Calling nodejs api for decrypting the alibaba encrypted access keys and secret keys
             result_api = requests.post(url=decrypt_credentials_api_endpoint, data=response, headers=headers)
+            if result_api.status_code != 200:
+                raise Exception('Failed to decrypt the credentials.')
             result_api = json.loads(result_api.content)
             if result_api.get('is_successful'):
                 response = result_api.get('credentials')
@@ -266,7 +268,7 @@ def check_for_provider_id(provider_id, credentials):
     error = False
     response = None
     try:
-        credentials = json.loads(credentials)
+        # credentials = json.loads(credentials)
         for item in credentials:
             if item.get('id') == provider_id:
                 error = False
