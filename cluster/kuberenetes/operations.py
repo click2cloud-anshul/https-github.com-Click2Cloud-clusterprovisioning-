@@ -1,7 +1,6 @@
 import base64
 import json
 import uuid
-from _yaml import ScannerError
 from os import path
 
 import requests
@@ -12,6 +11,7 @@ from kubernetes.config import kube_config
 import os
 
 from kubernetes.utils import FailToCreateError
+from yaml.scanner import ScannerError
 
 from clusterProvisioningClient.settings import BASE_DIR
 
