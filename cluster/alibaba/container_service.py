@@ -256,7 +256,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -346,7 +346,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -396,7 +396,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch namespace details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch namespace details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -435,7 +436,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -485,7 +486,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch role details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch role details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -524,7 +526,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -615,7 +617,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -706,7 +708,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -757,7 +759,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch deployment details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch deployment details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -796,7 +799,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -846,7 +849,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch secret details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch secret details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -885,7 +889,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -935,7 +939,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch node details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch node details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -974,7 +979,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1024,7 +1029,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch service details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch service details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1063,7 +1069,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1113,7 +1119,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch cron job details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch cron job details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1152,7 +1159,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1202,7 +1209,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch job details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch job details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1241,7 +1249,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1292,7 +1300,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch storage details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch storage details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1331,7 +1340,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1422,7 +1431,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1473,7 +1482,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch stateful set details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch stateful set details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1512,7 +1522,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1563,7 +1573,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch replica set details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch replica set details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1602,7 +1613,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1653,7 +1664,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch daemon set details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch daemon set details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1692,7 +1704,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1743,7 +1755,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch config map details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch config map details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1782,7 +1795,7 @@ class Alibaba_CS:
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            if 'parameters' in cluster:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
                                     error, response = self.describe_cluster_config(cluster.get('cluster_id'))
@@ -1833,7 +1846,8 @@ class Alibaba_CS:
                                 else:
                                     # If Eip is not present in cluster
                                     cluster_details.update(
-                                        {'error': 'Eip is not available or cluster is in failed state, unable to fetch all ingress details'})
+                                        {
+                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch all ingress details'})
                             else:
                                 cluster_details.update(
                                     {
@@ -1876,10 +1890,10 @@ class Alibaba_CS:
                                 # valid cluster_id provided
                                 if 'running' in cluster.get('state'):
                                     # if cluster is in running state
-                                    if 'parameters' in cluster:
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
-                                                'state'):
+                                            'state'):
                                             error, response = self.describe_cluster_config(cluster.get('cluster_id'))
                                             if not error:
                                                 cluster_config = json.loads(response)
@@ -1923,7 +1937,8 @@ class Alibaba_CS:
                                             else:
                                                 raise Exception(response)
                                         else:
-                                            raise Exception('Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
                                     else:
                                         raise Exception(
                                             'Unable to find the parameter for cluster. '
