@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-
+*.pyc
 # Test binary, build with `go test -c`
 *.test
 
@@ -18,3 +18,4 @@ clusters/*
 
 cluster/dumps/*
 !cluster/dumps/*.json
+

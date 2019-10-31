@@ -861,7 +861,6 @@ def all_node_details(request):
                             region_id='default'
                         )
                         error, result = alibaba_cs.get_node_details()
-
                         if not error:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
