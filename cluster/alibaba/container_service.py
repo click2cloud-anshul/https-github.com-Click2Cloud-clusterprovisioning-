@@ -1,19 +1,15 @@
 import json
 import os
-from os import path
 
 import yaml
 from aliyunsdkcore.acs_exception.exceptions import ServerException
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.request import CommonRequest
-from aliyunsdkros.request.v20190910.GetStackRequest import GetStackRequest
 
 from cluster.kuberenetes.operations import Kubernetes_Operations
 from cluster.others.miscellaneous_operation import get_db_info_using_cluster_id, create_cluster_config_file, \
     insert_or_update_cluster_details
-
 from clusterProvisioningClient.settings import BASE_DIR
-from common.apps import file_operation
 
 
 class Alibaba_CS:
@@ -253,6 +249,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'pod_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -284,8 +281,30 @@ class Alibaba_CS:
                                                         error, response = k8_obj.get_pods(cluster_url=cluster_url,
                                                                                           token=response)
                                                         if not error:
+                                                            # Adding unique labels for the pods in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'pod_details': response
+                                                                'pod_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -343,6 +362,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'namespace_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -374,8 +394,30 @@ class Alibaba_CS:
                                                         error, response = k8_obj.get_namespaces(cluster_url=cluster_url,
                                                                                                 token=response)
                                                         if not error:
+                                                            # Adding unique labels for the namespace in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'namespace_details': response
+                                                                'namespace_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -433,6 +475,8 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'role_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'cluster_role_labels': {},
+                                           'role_labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -464,9 +508,60 @@ class Alibaba_CS:
                                                         error, response = k8_obj.get_roles(cluster_url=cluster_url,
                                                                                            token=response)
                                                         if not error:
+                                                            # Adding unique labels for the cluster_roles in a single cluster
+                                                            cluster_roles_label_dict = {}
+                                                            roles_label_dict = {}
+
+                                                            for element in response.get('cluster_role_list').get(
+                                                                    'items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in cluster_roles_label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in cluster_roles_label_dict.get(
+                                                                                        key):
+                                                                                    cluster_roles_label_dict.get(
+                                                                                        key).append(value)
+                                                                            else:
+                                                                                cluster_roles_label_dict.update(
+                                                                                    {key: [value]})
+
+                                                            for element in response.get('role_list').get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in roles_label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in roles_label_dict.get(
+                                                                                        key):
+                                                                                    roles_label_dict.get(key).append(
+                                                                                        value)
+                                                                            else:
+                                                                                roles_label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'role_details': response
+                                                                'role_details': response,
+                                                                'cluster_role_labels': cluster_roles_label_dict,
+                                                                'role_labels': roles_label_dict
                                                             })
+
                                                         else:
                                                             cluster_details.update({'error': response})
                                                     else:
@@ -523,6 +618,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'persistent_volume_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -555,8 +651,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the pv in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'persistent_volume_details': response
+                                                                'persistent_volume_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -614,6 +732,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'persistent_volume_claim_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -646,8 +765,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the pvc in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'persistent_volume_claim_details': response
+                                                                'persistent_volume_claim_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -705,6 +846,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'deployment_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -737,8 +879,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the deployment in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'deployment_details': response
+                                                                'deployment_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -796,6 +960,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'secret_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -827,8 +992,30 @@ class Alibaba_CS:
                                                         error, response = k8_obj.get_secrets(cluster_url=cluster_url,
                                                                                              token=response)
                                                         if not error:
+                                                            # Adding unique labels for the secrets in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'secret_details': response
+                                                                'secret_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1012,6 +1199,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'service_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1043,8 +1231,30 @@ class Alibaba_CS:
                                                         error, response = k8_obj.get_services(cluster_url=cluster_url,
                                                                                               token=response)
                                                         if not error:
+                                                            # Adding unique labels for the service in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'service_details': response
+                                                                'service_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1102,6 +1312,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'cron_job_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1133,8 +1344,29 @@ class Alibaba_CS:
                                                         error, response = k8_obj.get_cron_jobs(cluster_url=cluster_url,
                                                                                                token=response)
                                                         if not error:
+                                                            # Adding unique labels for the cron jobs in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
                                                             cluster_details.update({
-                                                                'cron_job_details': response
+                                                                'cron_job_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1192,6 +1424,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'job_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1223,8 +1456,30 @@ class Alibaba_CS:
                                                         error, response = k8_obj.get_jobs(cluster_url=cluster_url,
                                                                                           token=response)
                                                         if not error:
+                                                            # Adding unique labels for the jobs in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'job_details': response
+                                                                'job_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1282,6 +1537,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'storage_class_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1314,8 +1570,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the storage class deatails in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'storage_class_details': response
+                                                                'storage_class_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1373,6 +1651,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'replication_controller_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1405,8 +1684,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the replication controller  in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'replication_controller_details': response
+                                                                'replication_controller_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1464,6 +1765,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'stateful_set_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1496,8 +1798,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the stateful sets in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'stateful_set_details': response
+                                                                'stateful_set_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1555,6 +1879,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'replica_set_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1587,8 +1912,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the replica set  in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'replica_set_details': response
+                                                                'replica_set_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1646,6 +1993,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'daemon_set_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1678,8 +2026,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the daemon set in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'daemon_set_details': response
+                                                                'daemon_set_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1737,6 +2107,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'config_map_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1769,8 +2140,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the config map in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'config_map_details': response
+                                                                'config_map_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
@@ -1828,6 +2221,7 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'ingress_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -1860,8 +2254,30 @@ class Alibaba_CS:
                                                             cluster_url=cluster_url,
                                                             token=response)
                                                         if not error:
+                                                            # Adding unique labels for the ingress in a single cluster
+                                                            label_dict = {}
+                                                            for element in response.get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in label_dict.get(key):
+                                                                                    label_dict.get(key).append(value)
+                                                                            else:
+                                                                                label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'ingress_details': response
+                                                                'ingress_details': response,
+                                                                'labels': label_dict
                                                             })
                                                         else:
                                                             cluster_details.update({'error': response})
