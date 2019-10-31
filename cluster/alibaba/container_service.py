@@ -939,10 +939,23 @@ class Alibaba_CS:
                                                                             else:
                                                                                 label_dict.update({key: [value]})
 
-                                                            cluster_details.update({
-                                                                'node_details': response,
-                                                                'labels': label_dict
-                                                            })
+                                                            node_details = response
+                                                            error, response = k8_obj.compute_allocated_resources()
+
+                                                            if not error:
+                                                                for node in node_details.get('items'):
+                                                                    for item in response:
+                                                                        if node.get('metadata').get('name') == item.get(
+                                                                                'node_name'):
+                                                                            node.update({'allocated_resources': item})
+                                                                cluster_details.update({
+                                                                    'node_details': node_details,
+                                                                    'labels': label_dict
+                                                                })
+                                                            else:
+                                                                cluster_details.update(
+                                                                    {'error': 'Unable to compute allocated resources'})
+
                                                         else:
                                                             cluster_details.update({'error': response})
                                                     else:

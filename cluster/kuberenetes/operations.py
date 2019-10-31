@@ -1,6 +1,7 @@
 import base64
 import json
 import uuid
+from collections import defaultdict
 from os import path
 
 import requests
@@ -11,6 +12,7 @@ from kubernetes.config import kube_config
 import os
 
 from kubernetes.utils import FailToCreateError
+from pint import UnitRegistry
 from yaml.scanner import ScannerError
 
 from clusterProvisioningClient.settings import BASE_DIR
@@ -745,6 +747,105 @@ class Kubernetes_Operations(object):
             if response.status_code != 200:
                 raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def compute_allocated_resources(self):
+        """
+        Calculate the resouce allocation for the nodes in the given cluster
+        e.g. cpu and memory
+        :param :
+        :return:
+        """
+        error = False
+        response = None
+        try:
+
+            ureg = UnitRegistry()
+            ureg.load_definitions('cluster/dumps/resource-allocated-units')
+            quantity_obj = ureg.Quantity
+            node_list = []
+            for node in self.clientCoreV1.list_node().items:
+                node_info = {}
+                node_name = node.metadata.name
+                allocatable = node.status.allocatable
+                max_pods = int(int(allocatable.get('pods')) * 1.5)
+                field_selector = ('status.phase!=Succeeded,status.phase!=Failed,' +
+                                  'spec.nodeName=' + node_name)
+                pods = self.clientCoreV1.list_pod_for_all_namespaces(limit=max_pods,
+                                                                     field_selector=field_selector).items
+                # compute the allocated resources
+                cpureqs, cpulmts, memreqs, memlmts = [], [], [], []
+                pod_count = 0
+                for pod in pods:
+                    for container in pod.spec.containers:
+                        res = container.resources
+                        reqs = defaultdict(lambda: 0, res.requests or {})
+                        lmts = defaultdict(lambda: 0, res.limits or {})
+
+                        # for cpu reqs for each container of a pod
+                        if reqs.get('cpu') is 0 or reqs.get('cpu') is None:
+                            # if the value is 0 or None
+                            cpureqs.append(0)
+                        elif quantity_obj(reqs.get('cpu')).unitless:
+                            # if the value is only in string e.g. '1'
+                            temp = quantity_obj('%sm' % eval(reqs.get('cpu') + '*1000'))
+                            cpureqs.append(temp)
+                        else:
+                            # if the value is only in string e.g. '100m'
+                            cpureqs.append(quantity_obj(reqs.get('cpu')))
+
+                        # for cpu limits for each container of a pod
+                        if lmts.get('cpu') is 0 or lmts.get('cpu') is None:
+                            # if the value is 0 or None
+                            cpulmts.append(0)
+                        elif quantity_obj(lmts.get('cpu')).unitless:
+                            # if the value is only in string e.g. '1'
+                            temp = quantity_obj('%sm' % eval(lmts.get('cpu') + '*1000'))
+                            cpulmts.append(temp)
+                        else:
+                            # if the value is only in string e.g. '100m'
+                            cpulmts.append(quantity_obj(lmts.get('cpu')))
+
+                        # for memory requests for each container of a pod
+                        if reqs.get('memory') is 0 or reqs.get('memory') is None:
+                            # if the value is 0 or None
+                            memreqs.append(0)
+                        elif quantity_obj(reqs.get('memory')).unitless:
+                            # if the value is only in string e.g. '1'
+                            temp = quantity_obj('%sm' % eval(reqs.get('memory') + '*1000'))
+                            memreqs.append(temp)
+                        else:
+                            # if the value is only in string e.g. '100Mi'
+                            memreqs.append(quantity_obj(reqs.get('memory')))
+
+                        # for memory limits for each container of a pod
+                        if lmts.get('memory') is 0 or lmts.get('memory') is None:
+                            # if the value is 0 or None
+                            memlmts.append(0)
+                        elif quantity_obj(lmts.get('memory')).unitless:
+                            # if the value is only in string e.g. '1'
+                            temp = quantity_obj('%sm' % eval(lmts.get('memory') + '*1000'))
+                            memlmts.append(temp)
+                        else:
+                            # if the value is only in string e.g. '100Mi'
+                            memlmts.append(quantity_obj(lmts.get('memory')))
+
+                    pod_count = pod_count + 1
+                node_info.update({
+                    'pod_count': pod_count,
+                    'cpu_requests': str(sum(cpureqs)),
+                    'cpu_limits': str(sum(cpulmts)),
+                    'memory_requests': str(sum(memreqs)),
+                    'memory_limits': str(sum(memlmts)),
+                    'node_name': str(node_name)
+                })
+                node_list.append(node_info)
+
+            response = node_list
         except Exception as e:
             error = True
             response = e.message

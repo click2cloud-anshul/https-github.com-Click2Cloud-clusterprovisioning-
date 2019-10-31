@@ -19,3 +19,4 @@ clusters/*
 cluster/dumps/*
 !cluster/dumps/*.json
 
+!cluster/dumps/resource-allocated-units
