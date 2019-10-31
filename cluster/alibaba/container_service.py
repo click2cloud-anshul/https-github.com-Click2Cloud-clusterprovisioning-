@@ -1,19 +1,15 @@
 import json
 import os
-from os import path
 
 import yaml
 from aliyunsdkcore.acs_exception.exceptions import ServerException
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.request import CommonRequest
-from aliyunsdkros.request.v20190910.GetStackRequest import GetStackRequest
 
 from cluster.kuberenetes.operations import Kubernetes_Operations
 from cluster.others.miscellaneous_operation import get_db_info_using_cluster_id, create_cluster_config_file, \
     insert_or_update_cluster_details
-
 from clusterProvisioningClient.settings import BASE_DIR
-from common.apps import file_operation
 
 
 class Alibaba_CS:
@@ -479,6 +475,8 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster.get('cluster_id'),
                                            'role_details': {},
                                            'cluster_name': cluster.get('name'),
+                                           'cluster_role_labels': {},
+                                           'role_labels': {},
                                            'error': None}
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
@@ -510,9 +508,60 @@ class Alibaba_CS:
                                                         error, response = k8_obj.get_roles(cluster_url=cluster_url,
                                                                                            token=response)
                                                         if not error:
+                                                            # Adding unique labels for the cluster_roles in a single cluster
+                                                            cluster_roles_label_dict = {}
+                                                            roles_label_dict = {}
+
+                                                            for element in response.get('cluster_role_list').get(
+                                                                    'items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in cluster_roles_label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in cluster_roles_label_dict.get(
+                                                                                        key):
+                                                                                    cluster_roles_label_dict.get(
+                                                                                        key).append(value)
+                                                                            else:
+                                                                                cluster_roles_label_dict.update(
+                                                                                    {key: [value]})
+
+                                                            for element in response.get('role_list').get('items'):
+                                                                # if metadata is empty or not present then labels
+                                                                # will be empty dictionary {}
+                                                                if 'metadata' in element and element.get(
+                                                                        'metadata') is not None:
+                                                                    # if metadata is empty or not present then labels
+                                                                    # will be empty dictionary {}
+                                                                    if 'labels' in element.get('metadata') and \
+                                                                            element.get('metadata').get(
+                                                                                'labels') is not None:
+                                                                        for key, value in element.get('metadata').get(
+                                                                                'labels').items():
+                                                                            if key in roles_label_dict:
+                                                                                # Adding the label value
+                                                                                if not value in roles_label_dict.get(
+                                                                                        key):
+                                                                                    roles_label_dict.get(key).append(
+                                                                                        value)
+                                                                            else:
+                                                                                roles_label_dict.update({key: [value]})
+
                                                             cluster_details.update({
-                                                                'role_details': response
+                                                                'role_details': response,
+                                                                'cluster_role_labels': cluster_roles_label_dict,
+                                                                'role_labels': roles_label_dict
                                                             })
+
                                                         else:
                                                             cluster_details.update({'error': response})
                                                     else:
