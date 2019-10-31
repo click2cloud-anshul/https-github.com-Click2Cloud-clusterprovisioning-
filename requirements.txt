@@ -19,3 +19,4 @@ aliyun-python-sdk-vpc==3.0.7
 requests==2.6.0
 kubernetes==10.0.1
 PyYAML==5.1
+pint==0.9
