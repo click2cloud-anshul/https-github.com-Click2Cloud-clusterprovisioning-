@@ -765,7 +765,8 @@ class Kubernetes_Operations(object):
         try:
 
             ureg = UnitRegistry()
-            ureg.load_definitions('cluster/dumps/resource-allocated-units')
+            path = os.path.join(BASE_DIR, 'cluster', 'dumps', 'resource-allocated-units')
+            ureg.load_definitions(path)
             quantity_obj = ureg.Quantity
             node_list = []
             for node in self.clientCoreV1.list_node().items:
