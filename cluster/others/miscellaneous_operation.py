@@ -73,7 +73,7 @@ def key_validations_cluster_provisioning(request_keys=None, validation_keys=None
                 if not isinstance(request_keys.get(key), int):
                     missing_value_flag = True
                     missing_values.append(key)
-            elif key in ['region_id', 'cluster_id', 'application_body']:
+            elif key in ['region_id', 'cluster_id', 'application_body', 'name', 'namespace']:
                 # checking string length and checking the type of value is string only
                 if (len(str(request_keys.get(key)).strip())) == 0 or not isinstance(request_keys.get(key), unicode):
                     missing_value_flag = True
