@@ -851,3 +851,28 @@ class Kubernetes_Operations(object):
             response = e.message
         finally:
             return error, response
+
+    def delete_query(self, cluster_url, token, self_link):
+        """
+        delete the requested object
+        :param cluster_url:
+        :param token:
+        :param self_link:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            url = '%s%s' % (cluster_url,self_link)
+            headers = {
+                'Authorization': 'Bearer %s' % token,
+            }
+            response = requests.request('DELETE', url, headers=headers, verify=False)
+            if response.status_code != 200:
+                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
+            response = json.loads(response.text)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response

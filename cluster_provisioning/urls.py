@@ -30,4 +30,5 @@ urlpatterns = [
     url(r'^alibaba/create-application$', views.create_app),
     url(r'^alibaba/create-kubernetes-cluster$', views.create_kubernetes_cluster),
     url(r'^alibaba/delete-kubernetes-cluster$', views.delete_kubernetes_cluster),
+    url(r'^alibaba/delete-pod$', views.alibaba_delete_pod),
 ]

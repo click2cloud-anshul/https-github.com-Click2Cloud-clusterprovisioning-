@@ -1959,3 +1959,68 @@ def delete_kubernetes_cluster(request):
         })
     finally:
         return JsonResponse(api_response, safe=False)
+
+
+@api_view(['DELETE'])
+def alibaba_delete_pod(request):
+    """
+        Delete the pod of the existing kubernetes cluster on Alibaba cloud
+        :param request:
+        :return:
+        """
+    api_response = {'is_successful': True,
+                    'error': None}
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'cluster_id', 'name', 'namespace']
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            cluster_id = json_request.get('cluster_id')
+            name = json_request.get('name')
+            namespace = json_request.get('namespace')
+            # Fetching access keys and secret keys from db
+            error, response = get_access_key_secret_key_list(user_id)
+            if not error:
+                error, response = check_for_provider_id(provider_id, response)
+                if not error:
+                    # if provider_id present in credentials from database
+                    alibaba_cs = Alibaba_CS(
+                        ali_access_key=response.get('client_id'),
+                        ali_secret_key=response.get('client_secret'),
+                        region_id='default'
+                    )
+                    error, response = alibaba_cs.is_cluster_exist(cluster_id)
+                    if not error:
+                        if response:
+                            # If cluster exists
+                            error, response = alibaba_cs.delete_pod(name, namespace, cluster_id)
+                            if error:
+                                # Unable to delete the pod, otherwise pod gets delete
+                                raise Exception(response)
+                        else:
+                            raise Exception(
+                                'Cluster does not exist in the current provider or it is in creating or deleting state.')
+                    else:
+                        # Cluster does not exist
+                        raise Exception(response)
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response)
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
