@@ -753,6 +753,102 @@ class Kubernetes_Operations(object):
         finally:
             return error, response
 
+    def delete_object_with_namespace(self, objects, name, namespace, cluster_url, token):
+        """
+        This method delete the required object from kubernetes cluster
+        :param objects:
+        :param name:
+        :param namespace:
+        :param cluster_url
+        :param token
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            access_flag_for_delete_action = True
+            for object in objects.get('items'):
+                if 'metadata' in object and object.get('metadata') is not None:
+                    if object.get('metadata').get('name') is not None:
+                        if object.get('metadata').get('namespace') is not None:
+                            object_name = str(object.get('metadata').get('name'))
+                            object_name_namespace = str(object.get('metadata').get('namespace'))
+                            if name == object_name and namespace == object_name_namespace:
+                                access_flag_for_delete_action = False
+                                self_link = object.get('metadata').get('selfLink')
+                                url = '%s%s' % (cluster_url, self_link)
+                                headers = {
+                                    'Authorization': 'Bearer %s' % token,
+                                }
+                                response = requests.request('DELETE', url, headers=headers, verify=False)
+                                if response.status_code != 200:
+                                    raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
+                                response = json.loads(response.text)
+                                break
+                        else:
+                            # if namespaces is not present
+                            raise Exception('Namespace is not present for Object')
+                    else:
+                        # if name is not present
+                        raise Exception('Name is not present for Object')
+                else:
+                    # metadata is not present
+                    raise Exception('Metadata is not present for Object')
+            if access_flag_for_delete_action:
+                # if object and object's namespace does not matches with requested name and namespaces
+                raise Exception(
+                    'Object %s is not present for that namespace %s' % (name, namespace))
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_object_without_namespace(self, objects, name, cluster_url, token):
+        """
+        This method delete the required object from kubernetes cluster
+        :param objects:
+        :param name:
+        :param cluster_url
+        :param token
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            access_flag_for_delete_action = True
+            for object in objects.get('items'):
+                if 'metadata' in object and object.get('metadata') is not None:
+                    if object.get('metadata').get('name') is not None:
+                        object_name = str(object.get('metadata').get('name'))
+                        if name == object_name:
+                            access_flag_for_delete_action = False
+                            self_link = object.get('metadata').get('selfLink')
+                            url = '%s%s' % (cluster_url, self_link)
+                            headers = {
+                                'Authorization': 'Bearer %s' % token,
+                            }
+                            response = requests.request('DELETE', url, headers=headers, verify=False)
+                            if response.status_code != 200:
+                                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
+                            response = json.loads(response.text)
+                            break
+                    else:
+                        # if name is not present
+                        raise Exception('Name is not present for object')
+                else:
+                    # metadata is not present
+                    raise Exception('Metadata is not present for object')
+            if access_flag_for_delete_action:
+                # if object does not matches with requested name
+                raise Exception(
+                    'Object %s is not present' % name)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
     def compute_allocated_resources(self):
         """
         Calculate the resouce allocation for the nodes in the given cluster
@@ -847,31 +943,6 @@ class Kubernetes_Operations(object):
                 node_list.append(node_info)
 
             response = node_list
-        except Exception as e:
-            error = True
-            response = e.message
-        finally:
-            return error, response
-
-    def delete_query(self, cluster_url, token, self_link):
-        """
-        delete the requested object
-        :param cluster_url:
-        :param token:
-        :param self_link:
-        :return:
-        """
-        error = False
-        response = None
-        try:
-            url = '%s%s' % (cluster_url,self_link)
-            headers = {
-                'Authorization': 'Bearer %s' % token,
-            }
-            response = requests.request('DELETE', url, headers=headers, verify=False)
-            if response.status_code != 200:
-                raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
-            response = json.loads(response.text)
         except Exception as e:
             error = True
             response = e.message

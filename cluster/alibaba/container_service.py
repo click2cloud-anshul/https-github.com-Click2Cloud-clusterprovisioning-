@@ -2515,11 +2515,13 @@ class Alibaba_CS:
                     raise Exception('No clusters are present in the current provider.')
                 else:
                     # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
                             if cluster_id == cluster.get('cluster_id'):
                                 # valid cluster_id provided
+                                access_flag_for_cluster_id = False
                                 if 'running' in cluster.get('state'):
                                     # if cluster is in running state
                                     if 'parameters' in cluster and cluster.get('parameters') is not None:
@@ -2552,48 +2554,19 @@ class Alibaba_CS:
                                                                 token = response
                                                                 error, response = k8_obj.get_pods(
                                                                     cluster_url=cluster_url,
-                                                                    token=response)
+                                                                    token=token)
                                                                 if not error:
-                                                                    for element in response.get('items'):
-                                                                        if 'metadata' in element and element.get(
-                                                                                'metadata') is not None:
-                                                                            if element.get('metadata').get(
-                                                                                    'name') is not None:
-                                                                                if element.get(
-                                                                                        'metadata').get(
-                                                                                    'namespace') is not None:
-                                                                                    pod_name = str(element.get(
-                                                                                        'metadata').get(
-                                                                                        'name'))
-                                                                                    pod_namespace = str(element.get(
-                                                                                        'metadata').get(
-                                                                                        'namespace'))
-                                                                                    if name == pod_name and namespace \
-                                                                                            == pod_namespace:
-                                                                                        self_link = \
-                                                                                            element.get('metadata') \
-                                                                                                .get('selfLink')
-                                                                                        error, response = k8_obj.delete_query(
-                                                                                            cluster_url=cluster_url,
-                                                                                            token=token,
-                                                                                            self_link=self_link)
-                                                                                        if error:
-                                                                                            # If any error occurred while
-                                                                                            # deleting object
-                                                                                            raise Exception(response)
-                                                                                    else:
-                                                                                        # if pod_name and pod_namespace does not matches with requested name and namespaces
-                                                                                        pass
-                                                                                else:
-                                                                                    # if namespaces is not present
-                                                                                    pass
-                                                                            else:
-                                                                                # if name is not present
-                                                                                pass
-                                                                        else:
-                                                                            # metadat is not present
-                                                                            pass
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
                                                                 else:
+                                                                    # Unable to fetch object details
                                                                     raise Exception(response)
                                                             else:
                                                                 raise Exception('Unable to find the cluster endpoint')
@@ -2618,11 +2591,1407 @@ class Alibaba_CS:
                                 else:
                                     # if cluster is not in running state
                                     raise Exception('Cluster is not in running state.')
-                            else:
-                                # invalid cluster_id provided
-                                raise Exception('Invalid cluster_id provided.')
                         else:
                             raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_persistent_volume_claim(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_persistent_volume_claims(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_cron_job(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_cron_jobs(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_daemon_set(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_daemon_sets(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_deployment(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_deployments(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_job(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_jobs(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_replica_set(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_replica_sets(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_replication_controller(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_replication_controllers(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_stateful_set(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_stateful_sets(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_service(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_services(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_persistent_volume(self, name, cluster_id):
+        """
+        Delete the kubernetes persistent volume on the cluster in Alibaba console which does not contain namespace
+        :param name:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_persistent_volumes(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_without_namespace(
+                                                                        items, name, cluster_url, token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_storage_class(self, name, cluster_id):
+        """
+        Delete the kubernetes persistent volume on the cluster in Alibaba console which does not contain namespace
+        :param name:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_storage_class(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_without_namespace(
+                                                                        items, name, cluster_url, token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_config_map(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_config_maps(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_secret(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error, response = self.check_database_state_and_update(cluster)
+                        if not error:
+                            if cluster_id == cluster.get('cluster_id'):
+                                # valid cluster_id provided
+                                access_flag_for_cluster_id = False
+                                if 'running' in cluster.get('state'):
+                                    # if cluster is in running state
+                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                        if 'True' in str(
+                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                            'state'):
+                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            if not error:
+                                                cluster_config = json.loads(response)
+                                                if 'config' in cluster_config:
+                                                    cluster_config = json.dumps(
+                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
+                                                    error, response = create_cluster_config_file(
+                                                        cluster.get('cluster_id'),
+                                                        json.loads(cluster_config))
+                                                    if not error:
+                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
+                                                                                   cluster.get('cluster_id'),
+                                                                                   'config')
+                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                        error, response = k8_obj.get_token()
+                                                        if not error:
+                                                            # If token is created
+                                                            cluster_url = None
+                                                            cluster_config = json.loads(cluster_config)
+                                                            for item in cluster_config.get('clusters'):
+                                                                cluster_info_token = item.get('cluster')
+                                                                cluster_url = cluster_info_token.get('server')
+                                                            if cluster_url is not None:
+                                                                token = response
+                                                                error, response = k8_obj.get_secrets(
+                                                                    cluster_url=cluster_url,
+                                                                    token=token)
+                                                                if not error:
+                                                                    items = response
+                                                                    error, response = k8_obj.delete_object_with_namespace(
+                                                                        items, name,
+                                                                        namespace,
+                                                                        cluster_url,
+                                                                        token)
+                                                                    if error:
+                                                                        # Unable to delete object
+                                                                        raise Exception(response)
+                                                                else:
+                                                                    # Unable to fetch object details
+                                                                    raise Exception(response)
+                                                            else:
+                                                                raise Exception('Unable to find the cluster endpoint')
+                                                        else:
+                                                            # If token is not created
+                                                            raise Exception(response)
+                                                    else:
+                                                        # If error while generating config file for a particular cluster
+                                                        raise Exception(response)
+                                                else:
+                                                    # If config key not present in Alibaba response
+                                                    raise Exception('Unable to find cluster config details')
+                                            else:
+                                                raise Exception(response)
+                                        else:
+                                            raise Exception(
+                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                    else:
+                                        raise Exception(
+                                            'Unable to find the parameter for cluster. '
+                                            'Either it is in initial or failed state')
+                                else:
+                                    # if cluster is not in running state
+                                    raise Exception('Cluster is not in running state.')
+                        else:
+                            raise Exception(response)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
 
