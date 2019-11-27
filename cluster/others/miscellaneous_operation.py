@@ -286,6 +286,38 @@ def get_s2i_details(user_id=None):
         return error, response
 
 
+def delete_s2i_records(json_request):
+    """
+    delete s2i detail from database
+    :param cluster_id:
+    :return:
+    """
+    cursor = None
+    error = False
+    response = None
+    try:
+        cursor = connection.cursor()
+
+        sql_cmd = "DELETE FROM public._cb_cp_s2i_details where user_id = '{user_id}' and image = '{new_image_name}' and builder_image = '{builder_image}' and tag = '{tag}' and created_at = '{created_at}' and registry ='{registry}' and github_url = '{github_url}'".format(
+            user_id=json_request.get('user_id'),
+            new_image_name=json_request.get('new_image_name'),
+            builder_image=json_request.get('builder_image'),
+            tag=json_request.get('tag'),
+            created_at=json_request.get('created_at'),
+            registry=json_request.get('registry'),
+            github_url=json_request.get('github_url'))
+
+        cursor.execute(sql_cmd)
+        response = 'Success'
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return error, response
+
+
 def create_cluster_config_file(cluster_id=None, config_details=None):
     """
     create the folder for the config file of kubernetes cluster with its id as a directory name
