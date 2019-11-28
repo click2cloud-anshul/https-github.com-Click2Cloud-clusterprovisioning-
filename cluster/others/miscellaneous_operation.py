@@ -180,7 +180,7 @@ def insert_or_update_cluster_details(params=None):
 def insert_or_update_s2i_details(params=None,insert_unique_id=None):
     """
     insert or update the s2i details in the database
-    :param params:
+    :param params,insert_unique_id:
     :return:
     """
     cursor = None
@@ -263,7 +263,7 @@ def get_db_info_using_cluster_id(cluster_id=None):
 def get_s2i_details(user_id=None):
     """
     retrieve the data of cluster from db
-    :param cluster_id:
+    :param user_id:
     :return:
     """
     cursor = None
@@ -289,7 +289,7 @@ def get_s2i_details(user_id=None):
 def delete_s2i_records(json_request):
     """
     delete s2i detail from database
-    :param cluster_id:
+    :param json_request:
     :return:
     """
     cursor = None
