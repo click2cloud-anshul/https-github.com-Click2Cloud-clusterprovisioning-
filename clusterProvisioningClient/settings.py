@@ -12,10 +12,17 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 
 import os
 
+# Load environment variables for dynamic configuration loading from .env file at the same path
+from dotenv import load_dotenv
+load_dotenv()
+
+# OR, the same with increased verbosity:
+# load_dotenv(verbose=True)
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-manage_iq_env = os.getenv('DB_Host')
-decrypt_credentials_api_endpoint = 'http://%s:3001/api/v1/decryptCredentials' % manage_iq_env
+
+decrypt_credentials_api_endpoint = os.getenv("CB_Node_Service") + '/api/v1/decryptCredentials'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -76,11 +83,11 @@ WSGI_APPLICATION = 'clusterProvisioningClient.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_Name'),
-        'USER': os.getenv('DB_User'),
-        'PASSWORD': os.getenv('DB_Password'),
-        'HOST': manage_iq_env,
-        'PORT': os.getenv('DB_Port')
+        'NAME': os.getenv("DB_Name") or "vmdb_development",
+        'USER': os.getenv("DB_User") or "root",
+        'PASSWORD': os.getenv("DB_Password"),
+        'HOST': os.getenv("DB_Host"),
+        'PORT': os.getenv("DB_Port") or "5432"
     },
 }
 

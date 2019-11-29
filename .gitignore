@@ -1,22 +1,14 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+
 *.pyc
-# Test binary, build with `go test -c`
-*.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-.idea/
-venv/
-
-clusters/*
-!clusters/*.json
-
-cluster/dumps/*
-!cluster/dumps/*.json
-
-!cluster/dumps/resource-allocated-units
+env
+*.DS_Store
+*.pyc
+__pycache__
+*.py.bak
+venv
+/.vs
+/.idea
+*.log
+*.pem
+*.pub
+.env
