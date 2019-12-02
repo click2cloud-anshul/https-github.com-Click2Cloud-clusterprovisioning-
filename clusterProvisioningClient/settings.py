@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'psycopg2',
+    'after_response'
 ]
 
 MIDDLEWARE = [

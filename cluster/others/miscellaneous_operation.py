@@ -177,6 +177,65 @@ def insert_or_update_cluster_details(params=None):
         return error, response
 
 
+def insert_or_update_s2i_details(params=None,insert_unique_id=None):
+    """
+    insert or update the s2i details in the database
+    :param params,insert_unique_id:
+    :return:
+    """
+    cursor = None
+    error = False
+    response = None
+    try:
+        cursor = connection.cursor()
+        user_id = int(params.get('user_id'))
+        status = params.get('status')
+        comment = params.get('comment')
+        tag = params.get('tag')
+        new_image_name = params.get('image_name')
+
+        if params.get('is_insert'):
+            github_url = params.get('github_url')
+            builder_image = params.get('builder_image')
+            registry = params.get('registry')
+            created_at = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+            cmd = "INSERT INTO public._cb_cp_s2i_details(user_id, created_at, image, builder_image, " \
+                  "github_url, tag, status, comment, registry) VALUES ({user_id},'{created_at}','{image}','{builder_image}'" \
+                  ",'{github_url}','{tag}','{status}','{comment}','{registry}') RETURNING id".format(
+                user_id=int(user_id),
+                created_at=created_at,
+                image=new_image_name,
+                builder_image=builder_image, github_url=github_url,
+                tag=tag,
+                status=status,
+                comment=comment,
+                registry=registry)
+            cursor.execute(cmd)
+            response = cursor.fetchall()
+        else:
+            # update operation
+            build_complete_status = "UPDATE public._cb_cp_s2i_details SET status = '{status}', comment = " \
+                                    "'{comment}'" \
+                                    "where id = {id} and user_id = {user_id} and image = '{image}' and tag = '{tag}' ".format(
+                status=status,
+                comment=comment,
+                id= insert_unique_id,
+                user_id=user_id,
+                image=new_image_name,
+                tag=tag,
+            )
+            cursor.execute(build_complete_status)
+            connection.commit()
+            response = 'Success'
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return response, error
+
+
 def get_db_info_using_cluster_id(cluster_id=None):
     """
     retrieve the data of cluster from db
@@ -192,6 +251,64 @@ def get_db_info_using_cluster_id(cluster_id=None):
             cluster_id=cluster_id)
         cursor.execute(sql_cmd)
         response = cursor.fetchall()
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return error, response
+
+
+def get_s2i_details(user_id=None):
+    """
+    retrieve the data of cluster from db
+    :param user_id:
+    :return:
+    """
+    cursor = None
+    error = False
+    response = None
+    try:
+        cursor = connection.cursor()
+
+        sql_cmd = "SELECT * FROM public._cb_cp_s2i_details where user_id = '{user_id}'".format(
+            user_id=user_id)
+
+        cursor.execute(sql_cmd)
+        response = cursor.fetchall()
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return error, response
+
+
+def delete_s2i_records(json_request):
+    """
+    delete s2i detail from database
+    :param json_request:
+    :return:
+    """
+    cursor = None
+    error = False
+    response = None
+    try:
+        cursor = connection.cursor()
+
+        sql_cmd = "DELETE FROM public._cb_cp_s2i_details where user_id = '{user_id}' and image = '{new_image_name}' and builder_image = '{builder_image}' and tag = '{tag}' and created_at = '{created_at}' and registry ='{registry}' and github_url = '{github_url}'".format(
+            user_id=json_request.get('user_id'),
+            new_image_name=json_request.get('new_image_name'),
+            builder_image=json_request.get('builder_image'),
+            tag=json_request.get('tag'),
+            created_at=json_request.get('created_at'),
+            registry=json_request.get('registry'),
+            github_url=json_request.get('github_url'))
+
+        cursor.execute(sql_cmd)
+        response = 'Success'
     except Exception as e:
         error = True
         response = e.message
