@@ -163,7 +163,7 @@ def create_new_image_operation(json_request):
         auth_config = {'username': registry_username, 'password': registry_password}
 
         json_request['is_insert'] = True
-        json_request['status'] = 'In Progress'
+        json_request['status'] = 'In-Progress'
         json_request['comment'] = 'Image is in build state'
         insert_response, error = insert_or_update_s2i_details(json_request)
 
@@ -199,7 +199,7 @@ def create_new_image_operation(json_request):
                 insert_or_update_s2i_details(json_request,record_unique_id)
         else:
             json_request.update({'is_insert': False,
-                                 'status': 'In Progress',
+                                 'status': 'In-Progress',
                                  'comment': 'Build completed successfully'})
             insert_or_update_s2i_details(json_request, record_unique_id)
 
@@ -226,7 +226,7 @@ def create_new_image_operation(json_request):
 
             else:
                 json_request.update({'is_insert': False,
-                                     'status': 'In Progress',
+                                     'status': 'In-Progress',
                                      'comment': 'Image has been tagged'})
                 insert_or_update_s2i_details(json_request, record_unique_id)
 
@@ -277,7 +277,7 @@ def create_new_image_operation(json_request):
                 else:
 
                     json_request.update({'is_insert': False,
-                                         'status': 'In Progress',
+                                         'status': 'In-Progress',
                                          'comment': 'Image has been pushed'})
                     insert_or_update_s2i_details(json_request, record_unique_id)
 
@@ -323,19 +323,11 @@ def get_image_details(request):
     api_response = {'is_successful': False,
                     'image_list': [],
                     'error': None}
-
-
     try:
-        json_request = json.loads(request.body)
-        valid_json_keys = ['user_id']
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
-            api_response.update({
-                'error': response.get('error')
-            })
-        else:
+
+        if request.GET.get('user_id'):
             record_list = None
-            error, record_list = get_s2i_details(json_request.get('user_id'))
+            error, record_list = get_s2i_details(request.GET['user_id'])
             if not error:
                 image_detail_list = []
                 if record_list is not None:
@@ -356,7 +348,11 @@ def get_image_details(request):
                         'image_list': image_detail_list,
                     })
             else:
-               raise Exception(record_list)
+                raise Exception(record_list)
+        else:
+            api_response.update({
+                'error': 'query parameter user_id is not found'
+            })
 
     except Exception as e:
         api_response.update({
