@@ -1618,7 +1618,7 @@ def create_app(request):
         'error': None}
     try:
         json_request = json.loads(request.body)
-        valid_json_keys = ['user_id', 'provider_id', 'cluster_id', 'application_body']
+        valid_json_keys = ['user_id', 'provider_id', 'cluster_id', 'application_body', 'namespace']
         # key validations
         error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
         if not error:
@@ -1626,6 +1626,7 @@ def create_app(request):
             provider_id = json_request.get('provider_id')
             cluster_id = json_request.get('cluster_id')
             application_body = json_request.get('application_body')
+            namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
             error, response = get_access_key_secret_key_list(user_id)
             if not error:
@@ -1637,7 +1638,8 @@ def create_app(request):
                         ali_secret_key=response.get('client_secret'),
                         region_id='default'
                     )
-                    error, response = alibaba_cs.create_from_yaml(cluster_id=cluster_id, data=application_body)
+                    error, response = alibaba_cs.create_from_yaml(cluster_id=cluster_id, data=application_body,
+                                                                  namespace=namespace)
                     if not error:
                         # application successfully created.
                         api_response = {

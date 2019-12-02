@@ -177,7 +177,7 @@ def insert_or_update_cluster_details(params=None):
         return error, response
 
 
-def insert_or_update_s2i_details(params=None,insert_unique_id=None):
+def insert_or_update_s2i_details(params=None, insert_unique_id=None):
     """
     insert or update the s2i details in the database
     :param params,insert_unique_id:
@@ -219,7 +219,7 @@ def insert_or_update_s2i_details(params=None,insert_unique_id=None):
                                     "where id = {id} and user_id = {user_id} and image = '{image}' and tag = '{tag}' ".format(
                 status=status,
                 comment=comment,
-                id= insert_unique_id,
+                id=insert_unique_id,
                 user_id=user_id,
                 image=new_image_name,
                 tag=tag,
@@ -262,7 +262,7 @@ def get_db_info_using_cluster_id(cluster_id=None):
 
 def get_s2i_details(user_id=None):
     """
-    retrieve the data of cluster from db
+    retrieve the data of s2i images from db
     :param user_id:
     :return:
     """
@@ -274,7 +274,6 @@ def get_s2i_details(user_id=None):
 
         sql_cmd = "SELECT * FROM public._cb_cp_s2i_details where user_id = '{user_id}'".format(
             user_id=user_id)
-
         cursor.execute(sql_cmd)
         response = cursor.fetchall()
     except Exception as e:
@@ -286,7 +285,7 @@ def get_s2i_details(user_id=None):
         return error, response
 
 
-def delete_s2i_records(json_request):
+def delete_s2i_image_detail_from_db(json_request):
     """
     delete s2i detail from database
     :param json_request:
@@ -298,7 +297,9 @@ def delete_s2i_records(json_request):
     try:
         cursor = connection.cursor()
 
-        sql_cmd = "DELETE FROM public._cb_cp_s2i_details where user_id = '{user_id}' and image = '{new_image_name}' and builder_image = '{builder_image}' and tag = '{tag}' and created_at = '{created_at}' and registry ='{registry}' and github_url = '{github_url}'".format(
+        sql_cmd = "DELETE FROM public._cb_cp_s2i_details where user_id = '{user_id}' and image = '{new_image_name}' " \
+                  "and builder_image = '{builder_image}' and tag = '{tag}' and created_at = '{created_at}' and " \
+                  "registry ='{registry}' and github_url = '{github_url}'".format(
             user_id=json_request.get('user_id'),
             new_image_name=json_request.get('new_image_name'),
             builder_image=json_request.get('builder_image'),
@@ -308,7 +309,6 @@ def delete_s2i_records(json_request):
             github_url=json_request.get('github_url'))
 
         cursor.execute(sql_cmd)
-        response = 'Success'
     except Exception as e:
         error = True
         response = e.message
@@ -328,12 +328,13 @@ def create_cluster_config_file(cluster_id=None, config_details=None):
     error = False
     response = None
     try:
-        path = os.path.join(BASE_DIR, 'cluster', 'dumps', cluster_id)
+        path = os.path.join(BASE_DIR, 'config_dumps', cluster_id)
         if not os.path.exists(path):
             os.makedirs(path)
-        with open(os.path.join(path, 'config'), 'w+') as outfile:
-            json.dump(config_details, outfile)
-        response = 'Success'
+        path = os.path.join(path, 'config')
+        if not os.path.exists(path):
+            with open(path, 'w+') as outfile:
+                json.dump(config_details, outfile)
     except Exception as e:
         error = True
         response = e.message

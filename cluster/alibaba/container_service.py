@@ -11,6 +11,8 @@ from cluster.others.miscellaneous_operation import get_db_info_using_cluster_id,
     insert_or_update_cluster_details
 from clusterProvisioningClient.settings import BASE_DIR
 
+config_dumps_path = os.path.join(BASE_DIR, 'config_dumps')
+
 
 class Alibaba_CS:
     def __init__(self, ali_access_key, ali_secret_key, region_id):
@@ -32,7 +34,6 @@ class Alibaba_CS:
         :param request_body:
         :return:
         """
-        # return True, {"created": "msg", "access_key": self.access_key, "secret_key": self.secret_key, "cluster_id":"fdsfdsfsdafdsf"}
         error = False
         response = None
         try:
@@ -131,8 +132,9 @@ class Alibaba_CS:
         cluster_details = {'cluster_info': cluster}
         error = False
         response = None
+        cluster_id = cluster.get('cluster_id')
         try:
-            error, response = get_db_info_using_cluster_id(cluster.get('cluster_id'))
+            error, response = get_db_info_using_cluster_id(cluster_id)
             if not error:
                 # if no data is available for the cluster in db then skip
                 if len(response) > 0:
@@ -144,7 +146,7 @@ class Alibaba_CS:
                                     'is_insert': False,
                                     'user_id': cluster_info_db[1],
                                     'provider_id': cluster_info_db[2],
-                                    'cluster_id': cluster_info_db[3],
+                                    'cluster_id': cluster_id,
                                     'cluster_details': json.dumps(cluster_details),
                                     'status': 'Failed',
                                     'operation': 'created from cloudbrain'
@@ -158,7 +160,7 @@ class Alibaba_CS:
                                     'is_insert': False,
                                     'user_id': cluster_info_db[1],
                                     'provider_id': cluster_info_db[2],
-                                    'cluster_id': cluster_info_db[3],
+                                    'cluster_id': cluster_id,
                                     'cluster_details': json.dumps(cluster_details),
                                     'status': 'Running',
                                     'operation': 'created from cloudbrain'
@@ -246,7 +248,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'pod_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -256,17 +259,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -359,7 +362,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'namespace_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -369,17 +373,18 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -472,7 +477,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'role_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'cluster_role_labels': {},
@@ -483,17 +489,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -615,7 +621,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'persistent_volume_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -625,17 +632,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -729,7 +736,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'persistent_volume_claim_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -739,17 +747,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -843,7 +851,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'deployment_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -853,17 +862,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -957,7 +966,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'secret_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -967,17 +977,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -1070,7 +1080,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'node_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -1080,17 +1091,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -1196,7 +1207,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'service_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -1206,17 +1218,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -1309,7 +1321,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'cron_job_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -1319,17 +1332,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -1421,7 +1434,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'job_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -1431,17 +1445,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -1534,7 +1548,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'storage_class_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -1544,17 +1559,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -1648,7 +1663,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'replication_controller_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -1658,17 +1674,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -1762,7 +1778,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'stateful_set_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -1772,17 +1789,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -1876,7 +1893,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'replica_set_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -1886,17 +1904,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -1990,7 +2008,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'daemon_set_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -2000,17 +2019,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -2104,7 +2123,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'config_map_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -2114,17 +2134,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -2218,7 +2238,8 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response:
-                        cluster_details = {'cluster_id': cluster.get('cluster_id'),
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
                                            'ingress_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
@@ -2228,17 +2249,17 @@ class Alibaba_CS:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
                                 if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                    error, response = self.describe_cluster_config(cluster_id)
                                     if not error:
                                         cluster_config = json.loads(response)
                                         if 'config' in cluster_config:
                                             cluster_config = json.dumps(
                                                 yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster.get('cluster_id'),
+                                            error, response = create_cluster_config_file(cluster_id,
                                                                                          json.loads(cluster_config))
                                             if not error:
-                                                config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                           cluster.get('cluster_id'),
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
                                                                            'config')
                                                 k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                 error, response = k8_obj.get_token()
@@ -2317,11 +2338,12 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def create_from_yaml(self, cluster_id, data):
+    def create_from_yaml(self, cluster_id, data, namespace):
         """
         Create the kubernetes object on the cluster in alibaba console
         :param cluster_id:
         :param data:
+        :param namespace:
         :return:
         """
         response = None
@@ -2346,18 +2368,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -2370,7 +2392,8 @@ class Alibaba_CS:
                                                                 cluster_url = cluster_info_token.get('server')
                                                             if cluster_url is not None:
                                                                 error, response = k8_obj.create_from_yaml(
-                                                                    cluster_id=cluster_id, data=data)
+                                                                    cluster_id=cluster_id, data=data,
+                                                                    namespace=namespace)
                                                                 if error:
                                                                     # If any error occurred while
                                                                     # creating application using file
@@ -2429,14 +2452,15 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in result:
+                        cluster_id = cluster.get('cluster_id')
                         cluster_details = {
-                            'cluster_id': cluster.get('cluster_id'),
+                            'cluster_id': cluster_id,
                             'config': {},
                             'error': None
                         }
                         error, response = self.check_database_state_and_update(cluster)
                         if not error:
-                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                            error, response = self.describe_cluster_config(cluster_id)
                             if not error:
                                 cluster_config = json.loads(response)
                                 if 'config' in cluster_config:
@@ -2528,18 +2552,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -2636,18 +2660,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -2744,18 +2768,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -2852,18 +2876,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -2960,18 +2984,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -3068,18 +3092,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -3176,18 +3200,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -3284,18 +3308,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -3392,18 +3416,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -3500,18 +3524,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -3607,18 +3631,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -3711,18 +3735,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -3816,18 +3840,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()
@@ -3924,18 +3948,18 @@ class Alibaba_CS:
                                         if 'True' in str(
                                                 cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster.get('cluster_id'))
+                                            error, response = self.describe_cluster_config(cluster_id)
                                             if not error:
                                                 cluster_config = json.loads(response)
                                                 if 'config' in cluster_config:
                                                     cluster_config = json.dumps(
                                                         yaml.load(cluster_config.get('config'), yaml.FullLoader))
                                                     error, response = create_cluster_config_file(
-                                                        cluster.get('cluster_id'),
+                                                        cluster_id,
                                                         json.loads(cluster_config))
                                                     if not error:
-                                                        config_path = os.path.join(BASE_DIR, 'cluster', 'dumps',
-                                                                                   cluster.get('cluster_id'),
+                                                        config_path = os.path.join(config_dumps_path,
+                                                                                   cluster_id,
                                                                                    'config')
                                                         k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
                                                         error, response = k8_obj.get_token()

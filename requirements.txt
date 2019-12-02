@@ -22,3 +22,5 @@ kubernetes==10.0.1
 PyYAML==5.1
 pint==0.9
 uwsgi>=2.0,<2.1
+docker==4.1.0
+django-after-response==0.2.2

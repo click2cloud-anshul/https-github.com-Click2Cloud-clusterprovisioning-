@@ -9,21 +9,21 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from django.db import connection
 from cluster.others.miscellaneous_operation import key_validations_cluster_provisioning
-from cluster.others.miscellaneous_operation import insert_or_update_s2i_details,get_s2i_details,delete_s2i_records
+from cluster.others.miscellaneous_operation import insert_or_update_s2i_details, get_s2i_details, \
+    delete_s2i_image_detail_from_db
 
 
-@api_view(["POST"])
+@api_view(['POST'])
 def create_new_image_using_s2i(request):
     """
-    This method set the job id and checks the token validity for the container migration
-    :param params: parameters passed during the api call
+    This method creates the new image using s2i
+    :param request: parameters passed during the api call
     :return:
     """
 
     api_response = {'is_successful': False,
                     'error': None}
     try:
-
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id', 'registry_username', 'registry_password', 'github_url', 'builder_image',
                            'image_name', 'tag', 'registry']
@@ -39,47 +39,44 @@ def create_new_image_using_s2i(request):
                 github_username = json_request.get('github_username')
                 github_password = json_request.get('github_password')
 
-            rm_https_from_giturl = json_request.get('github_url').strip().lstrip("https://")
+            rm_https_from_giturl = json_request.get('github_url').strip().lstrip('https://')
             check_github_repo = subprocess.Popen(
                 ['git', 'ls-remote', 'https://%s:%s@%s' % (github_username, github_password, rm_https_from_giturl)],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             output, error = check_github_repo.communicate()
 
-            if error != "":
-                split_error_string = error.split("\n")
+            if error != '':
+                split_error_string = error.split('\n')
                 partition_error_string = split_error_string[0].partition('remote: ')[2]
                 api_response.update({
-                    'error': 'github %s' % (partition_error_string).lower()
+                    'error': 'github %s' % partition_error_string.lower()
                 })
             else:
                 create_new_image_operation.after_response(json_request)
                 api_response.update({
                     'is_successful': True
                 })
-
-
     except Exception as e:
         api_response.update({
             'error': e.message
         })
-
     finally:
         return JsonResponse(api_response, safe=False)
 
 
-def delete_builder_image(dockercli, builder_image):
+def delete_builder_image(docker_cli, builder_image):
     """
     This function will delete the builder image from docker
-    :param dockercli:
+    :param docker_cli:
     :param builder_image:
     :return:
     """
     error = False
     response = None
     try:
-        get_pull_images = dockercli.images(builder_image)
+        get_pull_images = docker_cli.images(builder_image)
         if get_pull_images != []:
-            remove_pull_image = dockercli.remove_image(builder_image)
+            remove_pull_image = docker_cli.remove_image(builder_image)
     except Exception as e:
         error = True
         response = e.message
@@ -87,19 +84,19 @@ def delete_builder_image(dockercli, builder_image):
         return error, response
 
 
-def delete_new_image(dockercli, new_image):
+def delete_new_image(docker_cli, new_image):
     """
     This function will delete the builder image from docker
-    :param dockercli:
-    :param builder_image:
+    :param docker_cli:
+    :param new_image:
     :return:
     """
     error = False
     response = None
     try:
-        get_pull_images = dockercli.images(new_image)
+        get_pull_images = docker_cli.images(new_image)
         if get_pull_images != []:
-            remove_pull_image = dockercli.remove_image(new_image)
+            remove_pull_image = docker_cli.remove_image(new_image)
     except Exception as e:
         error = True
         response = e.message
@@ -107,19 +104,19 @@ def delete_new_image(dockercli, new_image):
         return error, response
 
 
-def delete_tag_image(dockercli, tag_image):
+def delete_tag_image(docker_cli, tag_image):
     """
     This function will delete the builder image from docker
-    :param dockercli:
-    :param builder_image:
+    :param docker_cli:
+    :param tag_image:
     :return:
     """
     error = False
     response = None
     try:
-        get_pull_images = dockercli.images(tag_image)
+        get_pull_images = docker_cli.images(tag_image)
         if get_pull_images != []:
-            remove_pull_image = dockercli.remove_image(tag_image)
+            remove_pull_image = docker_cli.remove_image(tag_image)
     except Exception as e:
         error = True
         response = e.message
@@ -127,16 +124,15 @@ def delete_tag_image(dockercli, tag_image):
         return error, response
 
 
-@after_response.enable
-def create_new_image_operation(json_request):
+def after_response_create_image(json_request):
     """
-    create the new image using s2i
-    :param request:
+    create the new image using s2i in after response
+    :param json_request:
     :return:
     """
-
+    record_unique_id = ''
     try:
-        record_unique_id = ''
+
         dockercli = docker.APIClient()
         github_username = ''
         github_password = ''
@@ -154,7 +150,7 @@ def create_new_image_operation(json_request):
         new_image_name = json_request.get('image_name')
 
         registry = ''
-        if json_request.get('registry') == 'docker.io':
+        if 'docker.io' in json_request.get('registry'):
             registry = '%s/%s' % (registry_username, new_image_name)
         else:
             registry = '%s/%s' % (json_request.get('registry'), new_image_name)
@@ -169,7 +165,7 @@ def create_new_image_operation(json_request):
 
         record_unique_id = insert_response[0][0]
 
-        rm_https_from_giturl = github_url.strip().lstrip("https://")
+        rm_https_from_giturl = github_url.strip().lstrip('https://')
 
         build_new_image = subprocess.Popen(
             ['s2i', 'build', 'https://%s:%s@%s' % (github_username, github_password, rm_https_from_giturl),
@@ -196,16 +192,15 @@ def create_new_image_operation(json_request):
                 json_request.update({'is_insert': False,
                                      'status': 'Failed',
                                      'comment': 'Error while deleting the builder image'})
-                insert_or_update_s2i_details(json_request,record_unique_id)
+                insert_or_update_s2i_details(json_request, record_unique_id)
         else:
             json_request.update({'is_insert': False,
                                  'status': 'In-Progress',
                                  'comment': 'Build completed successfully'})
             insert_or_update_s2i_details(json_request, record_unique_id)
+            tag_image = dockercli.tag(image=new_image_name, repository=registry, tag=tag)
 
-            tag_image = dockercli.tag(new_image_name, registry, tag)
-
-            if tag_image == False:
+            if not tag_image:
                 json_request.update({'is_insert': False,
                                      'status': 'Failed',
                                      'comment': 'Error while tagging the image'})
@@ -215,7 +210,7 @@ def create_new_image_operation(json_request):
                     json_request.update({'is_insert': False,
                                          'status': 'Failed',
                                          'comment': 'Error while deleting the builder image'})
-                    insert_or_update_s2i_details(json_request,record_unique_id)
+                    insert_or_update_s2i_details(json_request, record_unique_id)
 
                 error, response = delete_new_image(dockercli, new_image_name)
                 if error:
@@ -223,7 +218,6 @@ def create_new_image_operation(json_request):
                                          'status': 'Failed',
                                          'comment': 'Error while deleting the new image'})
                     insert_or_update_s2i_details(json_request, record_unique_id)
-
             else:
                 json_request.update({'is_insert': False,
                                      'status': 'In-Progress',
@@ -239,7 +233,6 @@ def create_new_image_operation(json_request):
                     comment = ''
                     if 'errorDetail' in res:
                         if 'message' in res.get('errorDetail'):
-                            # comment = res.get('errorDetail').get('message')
                             comment = 'docker push error: "%s"' % (res.get('errorDetail').get('message'))
                         else:
                             # user defined message
@@ -293,30 +286,44 @@ def create_new_image_operation(json_request):
                         json_request.update({'is_insert': False,
                                              'status': 'Failed',
                                              'comment': 'Error while deleting the tag image'})
-                        insert_or_update_s2i_details(json_request,record_unique_id)
+                        insert_or_update_s2i_details(json_request, record_unique_id)
 
                     error, response = delete_builder_image(dockercli, builder_image)
                     if error:
                         json_request.update({'is_insert': False,
                                              'status': 'Failed',
                                              'comment': 'Error while deleting the builder image'})
-                        insert_or_update_s2i_details(json_request,record_unique_id)
+                        insert_or_update_s2i_details(json_request, record_unique_id)
 
                     json_request.update({'is_insert': False,
                                          'status': 'Completed',
                                          'comment': 'New image created successfully'})
-                    insert_or_update_s2i_details(json_request,record_unique_id)
+                    insert_or_update_s2i_details(json_request, record_unique_id)
 
     except Exception as e:
-        return e
-    finally:
-        pass
+        json_request.update({'is_insert': False,
+                             'status': 'Failed',
+                             'comment': e.message})
+        insert_or_update_s2i_details(json_request, record_unique_id)
 
 
-@api_view(["GET"])
+@after_response.enable
+def create_new_image_operation(json_request):
+    """
+    create the new image using s2i in after response
+    :param json_request:
+    :return:
+    """
+    try:
+        after_response_create_image(json_request)
+    except Exception as e:
+        print e.message
+
+
+@api_view(['GET'])
 def get_image_details(request):
     """
-    get the list of the s2i image
+    get the list of the s2i images
     :param request:
     :return:
     """
@@ -326,7 +333,6 @@ def get_image_details(request):
     try:
 
         if request.GET.get('user_id'):
-            record_list = None
             error, record_list = get_s2i_details(request.GET['user_id'])
             if not error:
                 image_detail_list = []
@@ -353,18 +359,16 @@ def get_image_details(request):
             api_response.update({
                 'error': 'query parameter user_id is not found'
             })
-
     except Exception as e:
         api_response.update({
             'error': e.message
         })
-
     finally:
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(["DELETE"])
-def delete_image_details(request):
+@api_view(['DELETE'])
+def delete_image_detail(request):
     """
     delete the s2i image from database
     :param request:
@@ -372,7 +376,6 @@ def delete_image_details(request):
     """
     api_response = {'is_successful': False,
                     'error': None}
-
     try:
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id', 'new_image_name', 'builder_image', 'tag', 'created_at', 'registry', 'github_url']
@@ -382,18 +385,16 @@ def delete_image_details(request):
                 'error': response.get('error')
             })
         else:
-            error, record_list = delete_s2i_records(json_request)
+            error, response = delete_s2i_image_detail_from_db(json_request)
             if not error:
                 api_response.update({
-                        'is_successful': True
-                    })
+                    'is_successful': True
+                })
             else:
-               raise Exception(record_list)
-
+                raise Exception(response)
     except Exception as e:
         api_response.update({
             'error': e.message
         })
-
     finally:
         return JsonResponse(api_response, safe=False)

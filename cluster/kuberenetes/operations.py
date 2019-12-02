@@ -29,13 +29,11 @@ def create_file_for_app_deploy(cluster_id, data):
     response = None
     try:
         file_name = uuid.uuid1().hex
-        path = os.path.join(BASE_DIR, 'cluster', 'dumps', cluster_id)
-        if not os.path.exists(path):
-            os.makedirs(path)
+        path = os.path.join(BASE_DIR, 'config_dumps', cluster_id)
         data = base64.b64decode(data)
         with open(os.path.join(path, file_name), "w+") as outfile:
             outfile.write(data)
-        path = os.path.join(BASE_DIR, 'cluster', 'dumps', cluster_id, file_name)
+        path = os.path.join(BASE_DIR, 'config_dumps', cluster_id, file_name)
         if os.stat(path).st_size == 0 or not os.path.exists(path):
             raise Exception('Yaml or json file is invalid')
         response = path
@@ -113,16 +111,17 @@ class Kubernetes_Operations(object):
         Configuration.set_default(call_config)
         return client.apis.RbacAuthorizationV1Api().create_cluster_role_binding_with_http_info(body=body)
 
-    def create_from_yaml(self, cluster_id, data):
+    def create_from_yaml(self, cluster_id, data, namespace):
         """
         Creates a new app on kubernetes cluster using data
         :param cluster_id: 
         :param data:
+        :param namespace:
         :return: 
         """
         app = {
-            'app_name': None,
-            'app_kind': None
+            'name': None,
+            'kind': None
         }
         response = None
         error = False
@@ -146,7 +145,7 @@ class Kubernetes_Operations(object):
                 flag = False
                 try:
                     # App creation on kubernetes cluster
-                    utils.create_from_yaml(k8s_client=kube_client, yaml_file=yaml_file_path)
+                    utils.create_from_yaml(k8s_client=kube_client, yaml_file=yaml_file_path, namespace=namespace)
                     flag = True
                 except Exception as e:
                     exception = e
@@ -160,13 +159,13 @@ class Kubernetes_Operations(object):
                             if 'List' in yml_document.get('kind'):
                                 for yml_object in yml_document.get('items'):
                                     app.update({
-                                        'app_name': yml_object.get('metadata').get('name'),
-                                        'app_kind': yml_document.get('kind')
+                                        'name': yml_object.get('metadata').get('name'),
+                                        'kind': yml_document.get('kind')
                                     })
                             else:
                                 app.update({
-                                    'app_name': yml_document.get('metadata').get('name'),
-                                    'app_kind': yml_document.get('kind')
+                                    'name': yml_document.get('metadata').get('name'),
+                                    'kind': yml_document.get('kind')
                                 })
                             created_app_list.append(app)
                             error = False
@@ -224,7 +223,7 @@ class Kubernetes_Operations(object):
 
             else:
                 # if service account not found
-                path = os.path.join(BASE_DIR, 'cluster', 'dumps')
+                path = os.path.join(BASE_DIR, 'auth_templates')
                 if os.path.exists(os.path.join(path, 'namespace.json')):
                     with open(r"" + os.path.join(path, 'namespace.json')) as namespace:
                         body = yaml.safe_load(namespace)
@@ -272,7 +271,6 @@ class Kubernetes_Operations(object):
                 elif flag == 1:
                     # if cluster is unreachable
                     raise Exception('Cluster is unreachable')
-
                 else:
                     raise Exception('Unable to create token')
 
@@ -861,7 +859,7 @@ class Kubernetes_Operations(object):
         try:
 
             ureg = UnitRegistry()
-            path = os.path.join(BASE_DIR, 'cluster', 'dumps', 'resource-allocated-units')
+            path = os.path.join(BASE_DIR, 'auth_templates', 'resource-allocated-units')
             ureg.load_definitions(path)
             quantity_obj = ureg.Quantity
             node_list = []
