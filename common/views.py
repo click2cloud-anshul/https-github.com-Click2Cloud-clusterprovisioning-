@@ -7,6 +7,6 @@ from rest_framework.decorators import api_view
 # Create your views here.
 
 @api_view(['GET'])
-def testAPI(params):
+def health_check():
     response = {"Status": True}
     return JsonResponse(response, safe=False)
