@@ -1,3 +1,4 @@
+
 django==1.11.24
 djangorestframework==3.9.4
 django-extensions==2.2.1
@@ -17,7 +18,7 @@ aliyun-python-sdk-rds==2.3.9
 aliyun-python-sdk-ros==3.0.1
 aliyun-python-sdk-slb==3.2.13
 aliyun-python-sdk-vpc==3.0.7
-requests==2.6.0
+requests==2.14.2
 kubernetes==10.0.1
 PyYAML==5.1
 pint==0.9
