@@ -48,9 +48,14 @@ def create_new_image_using_s2i(request):
             if error != '':
                 split_error_string = error.split('\n')
                 partition_error_string = split_error_string[0].partition('remote: ')[2]
-                api_response.update({
-                    'error': 'github %s' % partition_error_string.lower()
-                })
+                if partition_error_string == '':
+                    api_response.update({
+                        'error': 'github repository not found.'
+                    })
+                else:
+                    api_response.update({
+                        'error': 'github %s' % (partition_error_string).lower()
+                    })
             else:
                 create_new_image_operation.after_response(json_request)
                 api_response.update({
@@ -340,7 +345,7 @@ def get_image_details(request):
                     if len(list(record_list)) > 0:
                         for record in record_list:
                             image_detail = {'created_at': record[2],
-                                            'new_image_name': record[3],
+                                            'image_name': record[3],
                                             'builder_image': record[4],
                                             'github_url': record[5],
                                             'tag': record[6],
@@ -378,7 +383,7 @@ def delete_image_detail(request):
                     'error': None}
     try:
         json_request = json.loads(request.body)
-        valid_json_keys = ['user_id', 'new_image_name', 'builder_image', 'tag', 'created_at', 'registry', 'github_url']
+        valid_json_keys = ['user_id', 'image_name', 'builder_image', 'tag', 'created_at', 'registry', 'github_url']
         error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
         if error:
             api_response.update({
