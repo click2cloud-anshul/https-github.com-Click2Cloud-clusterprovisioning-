@@ -35,7 +35,7 @@ urlpatterns = [
     url(r'^alibaba/delete-cron-job$', views.alibaba_delete_cron_job),
     url(r'^alibaba/delete-daemon-set$', views.alibaba_delete_daemon_set),
     url(r'^alibaba/delete-deployment$', views.alibaba_delete_deployment),
-    url(r'^alibaba/delete-delete-job$', views.alibaba_delete_job),
+    url(r'^alibaba/delete-job$', views.alibaba_delete_job),
     url(r'^alibaba/delete-replica-set$', views.alibaba_delete_replica_set),
     url(r'^alibaba/delete-replication-controller$', views.alibaba_delete_replication_controller),
     url(r'^alibaba/delete-stateful-sets$', views.alibaba_delete_stateful_set),
