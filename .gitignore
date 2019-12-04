@@ -13,3 +13,4 @@ venv
 *.pub
 .env
 /config_dumps/*
+*.tar

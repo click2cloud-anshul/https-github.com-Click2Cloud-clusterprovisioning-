@@ -233,12 +233,12 @@ def after_response_create_image(json_request):
 
                 if 'errorDetail' in push_image:
                     error_partition = push_image.partition('"errorDetail":')[2]
-                    join_string = '{"errorDetail":' + error_partition
+                    join_string = '{"errorDetail":%s' % error_partition
                     res = ast.literal_eval(join_string)
                     comment = ''
                     if 'errorDetail' in res:
                         if 'message' in res.get('errorDetail'):
-                            comment = 'docker push error: "%s"' % (res.get('errorDetail').get('message'))
+                            comment = 'docker push error: %s' % (res.get('errorDetail').get('message'))
                         else:
                             # user defined message
                             comment = 'Error while pushing new images'
@@ -265,7 +265,7 @@ def after_response_create_image(json_request):
                                              'comment': 'Error while deleting the new image'})
                         insert_or_update_s2i_details(json_request, record_unique_id)
 
-                    error, response = delete_tag_image(dockercli, registry + ':' + tag)
+                    error, response = delete_tag_image(dockercli, '%s:%s' % (registry, tag))
                     if error:
                         json_request.update({'is_insert': False,
                                              'status': 'Failed',
@@ -286,7 +286,7 @@ def after_response_create_image(json_request):
                                              'comment': 'Error while deleting the new image'})
                         insert_or_update_s2i_details(json_request, record_unique_id)
 
-                    error, response = delete_tag_image(dockercli, registry + ':' + tag)
+                    error, response = delete_tag_image(dockercli, '%s:%s' % (registry, tag))
                     if error:
                         json_request.update({'is_insert': False,
                                              'status': 'Failed',

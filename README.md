@@ -17,5 +17,5 @@ docker build --build-arg=COMMIT=$(git rev-parse --short HEAD) --build-arg=BRANCH
 ```
 ## Run Docker Image
 ```
-docker run --name clusterpro -d -p 8080:8000 -v $(pwd):/var/log/cluster-provisioner/ --env-file ./clusterProvisioningClient/.env registry.click2cloud.com:5000/click2cloud/cluster-provisioner:production
+docker run --name clusterpro -d -p 8080:8000 -v $(pwd):/var/log/cluster-provisioner/ --env-file ./clusterProvisioningClient/.env registry.click2cloud.com:5000/click2cloud/cluster-provisioner:production -v /var/run/docker.sock:/var/run/docker.sock:z
 ```

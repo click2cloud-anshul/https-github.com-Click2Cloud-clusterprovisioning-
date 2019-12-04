@@ -22,7 +22,7 @@ COPY requirements.txt /requirements.txt
 
 # Install build deps, then run `pip install`, then remove unneeded build deps all in a single step.
 RUN set -ex \
-    && yum install -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False epel-release unixODBC unixODBC-devel \
+    && yum install -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False epel-release yum-utils unixODBC unixODBC-devel  \
     && BUILD_DEPS=" \
         gcc \
         gcc-c++ \
@@ -32,6 +32,15 @@ RUN set -ex \
         postgresql-devel \
         python-pip \
     " \
+    && yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo \
+    # S@I dependencies
+    && RUNTIME_DEPS=" \
+    device-mapper-persistent-data \
+    lvm2 \
+    git \
+    docker-ce \
+    "\
+    && yum install -y $RUNTIME_DEPS \
     && yum install -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False $BUILD_DEPS \
     && pip install virtualenv \
     && virtualenv /venv \
@@ -46,6 +55,7 @@ RUN set -ex \
 RUN mkdir -p /usr/src/app/cluster-provisioner/ && mkdir -p /var/log/cluster-provisioner/
 WORKDIR /usr/src/app/cluster-provisioner/
 COPY . /usr/src/app/cluster-provisioner/
+RUN mv /usr/src/app/cluster-provisioner/dependency/binaries/s2i /usr/local/bin/
 RUN chmod -R 777 /usr/src/app/*
 
 # uWSGI will listen on this port
