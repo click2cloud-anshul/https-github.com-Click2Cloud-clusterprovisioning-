@@ -44,7 +44,7 @@ def get_access_key_secret_key_list(user_id=None):
 
     except Exception as ex:
         error = True
-        response = ex.message
+        response = 'Cannot connect to server'
     finally:
         if cursor is not None:
             cursor.close()
