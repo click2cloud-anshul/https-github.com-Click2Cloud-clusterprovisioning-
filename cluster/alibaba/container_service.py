@@ -8,10 +8,41 @@ from aliyunsdkcore.request import CommonRequest
 
 from cluster.kuberenetes.operations import Kubernetes_Operations
 from cluster.others.miscellaneous_operation import get_db_info_using_cluster_id, create_cluster_config_file, \
-    insert_or_update_cluster_details
+    insert_or_update_cluster_details, get_cluster_config_details, insert_or_update_cluster_config_details
 from clusterProvisioningClient.settings import BASE_DIR
 
 config_dumps_path = os.path.join(BASE_DIR, 'config_dumps')
+
+
+def get_labels_from_items(item_list):
+    """
+    This function will extracts all the labels from labels
+    :param item_list:
+    :return:
+    """
+    label_dict = {}
+    for element in item_list:
+        # if metadata is empty or not present then labels
+        # will be empty dictionary {}
+        if 'metadata' in element and element.get(
+                'metadata') is not None:
+            # if metadata is empty or not present then labels
+            # will be empty dictionary {}
+            if 'labels' in element.get('metadata') and \
+                    element.get('metadata').get(
+                        'labels') is not None:
+                for key, value in element.get('metadata').get(
+                        'labels').items():
+                    if key in label_dict:
+                        # Adding the label value
+                        if not value in label_dict.get(
+                                key):
+                            label_dict.get(
+                                key).append(value)
+                    else:
+                        label_dict.update(
+                            {key: [value]})
+    return label_dict
 
 
 class Alibaba_CS:
@@ -205,9 +236,119 @@ class Alibaba_CS:
         finally:
             return error, response
 
+    def describe_cluster_config_token_endpoint(self, cluster_id):
+        """
+        get the single cluster config and token from cluster_id
+        :param cluster_id:
+        :return:
+        """
+        error = False
+        response = None
+        config_detail = {
+            'cluster_id': cluster_id,
+            'cluster_public_endpoint': None,
+            'cluster_config': None,
+            'cluster_token': None,
+            'provider': 'Alibaba:Cloud',
+            'is_insert': False,
+            'k8s_object': None
+        }
+        try:
+            error_get_cluster_config_details, response_get_cluster_config_details = get_cluster_config_details(
+                config_detail.get('provider'), cluster_id)
+            if not error_get_cluster_config_details:
+                if response_get_cluster_config_details is not None:
+                    if len(list(response_get_cluster_config_details)) > 0:
+                        # if cluster config is present in database
+                        config_path = os.path.join(config_dumps_path,
+                                                   cluster_id,
+                                                   'config')
+                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                        config_detail.update({'cluster_id': cluster_id,
+                                              'cluster_public_endpoint': response_get_cluster_config_details.get(
+                                                  'cluster_public_endpoint'),
+                                              'cluster_config': response_get_cluster_config_details.get(
+                                                  'cluster_config'),
+                                              'cluster_token': response_get_cluster_config_details.get('cluster_token'),
+                                              'k8s_object': k8_obj})
+                    else:
+                        #  if cluster config is not present in database
+                        error_describe_cluster_config, response_describe_cluster_config = self.describe_cluster_config(
+                            cluster_id)
+                        if not error_describe_cluster_config:
+                            # config is generated from Alibaba Cloud
+
+                            if 'config' in response_describe_cluster_config:
+                                cluster_config = json.dumps(
+                                    yaml.load(json.loads(response_describe_cluster_config).get('config'),
+                                              yaml.FullLoader))
+
+                                error_create_cluster_config_file, response_create_cluster_config_file = create_cluster_config_file(
+                                    cluster_id,
+                                    json.loads(cluster_config))
+                                if not error_create_cluster_config_file:
+                                    config_path = os.path.join(config_dumps_path,
+                                                               cluster_id,
+                                                               'config')
+                                    k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                    error_get_token, response_get_token = k8_obj.get_token()
+                                    if not error_get_token:
+                                        # If token is created
+                                        error_describe_cluster_endpoint, response_describe_cluster_endpoint \
+                                            = self.describe_cluster_endpoint(cluster_id)
+                                        if not error_describe_cluster_endpoint:
+                                            if 'api_server_endpoint' in response_describe_cluster_endpoint:
+                                                if response_describe_cluster_endpoint.get(
+                                                        'api_server_endpoint') is not None:
+                                                    config_detail.update({
+                                                        'cluster_public_endpoint': response_describe_cluster_endpoint.get(
+                                                            'api_server_endpoint'),
+                                                        'cluster_config': json.loads(cluster_config),
+                                                        'cluster_token': response_get_token,
+                                                        'is_insert': True,
+                                                        'k8s_object': k8_obj
+                                                    })
+                                                    error_insert_or_update_cluster_config_details, \
+                                                    response_insert_or_update_cluster_config_details = \
+                                                        insert_or_update_cluster_config_details(
+                                                            config_detail)
+                                                    if error_insert_or_update_cluster_config_details:
+                                                        raise Exception(
+                                                            response_insert_or_update_cluster_config_details)
+                                                else:
+                                                    # If cluster api server endpoint key not present in Alibaba response
+                                                    raise Exception(
+                                                        'Unable to find cluster api server endpoint details')
+                                            else:
+                                                # If cluster api server endpoint key not present in Alibaba response
+                                                raise Exception('Unable to find cluster api server endpoint details')
+                                        else:
+                                            # If cluster api server endpoint key not present in Alibaba response
+                                            raise Exception(response_describe_cluster_endpoint)
+                                    else:
+                                        # If cluster's token can not be generated
+                                        raise Exception(response_get_token)
+                                else:
+                                    # If cluster's config can not be generated
+                                    raise Exception(response_create_cluster_config_file)
+                            else:
+                                # If cluster's config can not be generated
+                                raise Exception('Unable to find cluster config details')
+                        else:
+                            # if unable to generate config from Alibaba Cloud
+                            raise Exception(response_describe_cluster_config)
+                    response = config_detail
+            else:
+                raise Exception(response_get_cluster_config_details)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
     def describe_cluster_config(self, cluster_id):
         """
-            get the single cluster configuration
+        get the single cluster configuration
         :param cluster_id:
         :return:
         """
@@ -233,6 +374,35 @@ class Alibaba_CS:
         finally:
             return error, response
 
+    def describe_cluster_endpoint(self, cluster_id):
+        """
+        Get the cluster endpoints
+        :param cluster_id:
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            client = AcsClient(self.access_key, self.secret_key, 'default')
+            request = CommonRequest()
+            request.set_accept_format('json')
+            request.set_method('GET')
+            request.set_protocol_type('https')  # https | http
+            request.set_domain('cs.aliyuncs.com')
+            request.set_version('2015-12-15')
+            request.add_query_param('RegionId', "default")
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/clusters/' + cluster_id + '/endpoints')
+            body = ''''''
+            request.set_content(body.encode('utf-8'))
+            response = client.do_action_with_exception(request)
+            response = json.loads(response)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
     def get_pod_details(self):
         """
         Get the detail of all the pods of all the clusters in alibaba console
@@ -240,107 +410,61 @@ class Alibaba_CS:
         """
         cluster_details_list = []
         error = False
-        response = []
+        response = None
         try:
-            error, response = self.describe_all_clusters()
-            if not error:
-                if len(response) == 0:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'pod_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_pods(cluster_url=cluster_url,
-                                                                                          token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the pods in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'pod_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_get_pods = k8s_obj.get_pods(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_pods:
+                                            labels = get_labels_from_items(
+                                                response_get_pods.get('items'))
+                                            cluster_details.update({
+                                                'pod_details': response_get_pods,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_pods})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch pod details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
-
+                raise Exception(response_describe_all_clusters)
         except Exception as e:
             error = True
             response = e.message
@@ -356,105 +480,60 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
-            if not error:
-                if len(response) == 0:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'namespace_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_namespaces(cluster_url=cluster_url,
-                                                                                                token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the namespace in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'namespace_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_namespaces, response_get_namespaces = k8s_obj.get_namespaces(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_namespaces:
+                                            labels = get_labels_from_items(
+                                                response_get_namespaces.get('items'))
+                                            cluster_details.update({
+                                                'namespace_details': response_get_namespaces,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({
+                                                'error': response_get_namespaces})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
+                                    # If cluster is not in running state
                                     cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch namespace details'})
+                                        {'error': 'Cluster is not in running state'})
                             else:
                                 cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                    {'error':
+                                         'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -471,12 +550,12 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
-            if not error:
-                if len(response) == 0:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'role_details': {},
@@ -484,122 +563,51 @@ class Alibaba_CS:
                                            'cluster_role_labels': {},
                                            'role_labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_roles(cluster_url=cluster_url,
-                                                                                           token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the cluster_roles in a single cluster
-                                                            cluster_roles_label_dict = {}
-                                                            roles_label_dict = {}
-
-                                                            for element in response.get('cluster_role_list').get(
-                                                                    'items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in cluster_roles_label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in cluster_roles_label_dict.get(
-                                                                                        key):
-                                                                                    cluster_roles_label_dict.get(
-                                                                                        key).append(value)
-                                                                            else:
-                                                                                cluster_roles_label_dict.update(
-                                                                                    {key: [value]})
-
-                                                            for element in response.get('role_list').get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in roles_label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in roles_label_dict.get(
-                                                                                        key):
-                                                                                    roles_label_dict.get(key).append(
-                                                                                        value)
-                                                                            else:
-                                                                                roles_label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'role_details': response,
-                                                                'cluster_role_labels': cluster_roles_label_dict,
-                                                                'role_labels': roles_label_dict
-                                                            })
-
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_roles, response_get_roles = k8s_obj.get_roles(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_roles:
+                                            cluster_roles_label_dict = get_labels_from_items(
+                                                response_get_roles.get('cluster_role_list').get('items'))
+                                            roles_label_dict = get_labels_from_items(
+                                                response_get_roles.get('role_list').get('items'))
+                                            cluster_details.update({
+                                                'role_details': response_get_roles,
+                                                'cluster_role_labels': cluster_roles_label_dict,
+                                                'role_labels': roles_label_dict
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({
+                                                'error': response_get_roles})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
+                                    # If cluster is not in running state
                                     cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch role details'})
+                                        {'error': 'Cluster is not in running state'})
                             else:
                                 cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                    {'error':
+                                         'Unable to find the parameter for cluster. Either it is in initial or failed state'})
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
-                    response = cluster_details_list
+                response = cluster_details_list
             else:
-                raise Exception(response)
-
+                raise Exception(response_describe_all_clusters)
         except Exception as e:
             error = True
             response = e.message
@@ -615,105 +623,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
-            if not error:
-                if len(response) == 0:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'persistent_volume_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_persistent_volumes(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the pv in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'persistent_volume_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_persistent_volumes, response_get_persistent_volumes = k8s_obj.get_persistent_volumes(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_persistent_volumes:
+                                            labels = get_labels_from_items(
+                                                response_get_persistent_volumes.get('items'))
+                                            cluster_details.update({
+                                                'persistent_volume_details': response_get_persistent_volumes,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_persistent_volumes})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state so unable to fetch persistent volume details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -730,105 +692,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
-            if not error:
-                if len(response) == 0:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'persistent_volume_claim_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_persistent_volume_claims(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the pvc in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'persistent_volume_claim_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_persistent_volume_claims, response_get_persistent_volume_claims = k8s_obj.get_persistent_volume_claims(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_persistent_volume_claims:
+                                            labels = get_labels_from_items(
+                                                response_get_persistent_volume_claims.get('items'))
+                                            cluster_details.update({
+                                                'persistent_volume_claim_details': response_get_persistent_volume_claims,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_persistent_volume_claims})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch persistent volume claim details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -845,105 +761,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
-            if not error:
-                if len(response) == 0:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'deployment_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_deployments(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the deployment in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'deployment_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_deployments, response_get_deployments = k8s_obj.get_deployments(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_deployments:
+                                            labels = get_labels_from_items(
+                                                response_get_deployments.get('items'))
+                                            cluster_details.update({
+                                                'deployment_details': response_get_deployments,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_deployments})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch deployment details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -960,104 +830,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
-            if not error:
-                if len(response) == 0:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'secret_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_secrets(cluster_url=cluster_url,
-                                                                                             token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the secrets in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'secret_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_secrets, response_get_secrets = k8s_obj.get_secrets(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_secrets:
+                                            labels = get_labels_from_items(
+                                                response_get_secrets.get('items'))
+                                            cluster_details.update({
+                                                'secret_details': response_get_secrets,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_secrets})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch secret details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -1074,117 +899,69 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
-            if not error:
-                if len(response) == 0:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'node_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_nodes(cluster_url=cluster_url,
-                                                                                           token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the nodes in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            node_details = response
-                                                            error, response = k8_obj.compute_allocated_resources()
-
-                                                            if not error:
-                                                                for node in node_details.get('items'):
-                                                                    for item in response:
-                                                                        if node.get('metadata').get('name') == item.get(
-                                                                                'node_name'):
-                                                                            node.update({'allocated_resources': item})
-                                                                cluster_details.update({
-                                                                    'node_details': node_details,
-                                                                    'labels': label_dict
-                                                                })
-                                                            else:
-                                                                cluster_details.update(
-                                                                    {'error': 'Unable to compute allocated resources'})
-
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_nodes, response_get_nodes = k8s_obj.get_nodes(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_nodes:
+                                            labels = get_labels_from_items(
+                                                response_get_nodes.get('items'))
+                                            error_compute_allocated_resources, response_compute_allocated_resources = k8s_obj.compute_allocated_resources()
+                                            if not error_compute_allocated_resources:
+                                                for node in response_get_nodes.get('items'):
+                                                    for item in response_compute_allocated_resources:
+                                                        if node.get('metadata').get('name') == item.get(
+                                                                'node_name'):
+                                                            node.update({'allocated_resources': item})
+                                                cluster_details.update({
+                                                    'node_details': response_get_nodes,
+                                                    'labels': labels
+                                                })
                                             else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                                cluster_details.update(
+                                                    {'error': 'Unable to compute allocated resources'})
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_nodes})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch node details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -1201,104 +978,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                if len(response) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'service_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_services(cluster_url=cluster_url,
-                                                                                              token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the service in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'service_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_services, response_get_services = k8s_obj.get_services(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_services:
+                                            labels = get_labels_from_items(
+                                                response_get_services.get('items'))
+                                            cluster_details.update({
+                                                'service_details': response_get_services,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_services})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch service details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -1315,103 +1047,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                if len(response) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'cron_job_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_cron_jobs(cluster_url=cluster_url,
-                                                                                               token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the cron jobs in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-                                                            cluster_details.update({
-                                                                'cron_job_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_cron_jobs, response_get_cron_jobs = k8s_obj.get_cron_jobs(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_cron_jobs:
+                                            labels = get_labels_from_items(
+                                                response_get_cron_jobs.get('items'))
+                                            cluster_details.update({
+                                                'cron_job_details': response_get_cron_jobs,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_cron_jobs})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch cron job details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -1428,104 +1116,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                if len(response) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'job_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_jobs(cluster_url=cluster_url,
-                                                                                          token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the jobs in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'job_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_jobs, response_get_jobs = k8s_obj.get_jobs(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_jobs:
+                                            labels = get_labels_from_items(
+                                                response_get_jobs.get('items'))
+                                            cluster_details.update({
+                                                'job_details': response_get_jobs,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_jobs})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch job details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -1533,7 +1176,7 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def get_all_storage_class_details(self):
+    def get_storage_class_details(self):
         """
         Get the detail of all the storage class of all the clusters in alibaba console
         :return:
@@ -1542,105 +1185,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                if len(response) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'storage_class_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_storage_class(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the storage class deatails in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'storage_class_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_storage_class, response_get_storage_class = k8s_obj.get_storage_classes(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_storage_class:
+                                            labels = get_labels_from_items(
+                                                response_get_storage_class.get('items'))
+                                            cluster_details.update({
+                                                'storage_class_details': response_get_storage_class,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_storage_class})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch storage details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -1648,7 +1245,7 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def get_all_replication_controller_details(self):
+    def get_replication_controller_details(self):
         """
         Get the detail of all the replication controllers of all the clusters in alibaba console
         :return:
@@ -1657,105 +1254,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                if len(response) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'replication_controller_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_replication_controllers(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the replication controller  in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'replication_controller_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_replication_controllers, response_get_replication_controllers = k8s_obj.get_replication_controllers(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_replication_controllers:
+                                            labels = get_labels_from_items(
+                                                response_get_replication_controllers.get('items'))
+                                            cluster_details.update({
+                                                'replication_controller_details': response_get_replication_controllers,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_replication_controllers})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch replication controller details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -1763,7 +1314,7 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def get_all_stateful_set_details(self):
+    def get_stateful_set_details(self):
         """
         Get the detail of all the stateful sets of all the clusters in alibaba console
         :return:
@@ -1772,105 +1323,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
-            if not error:
-                if len(response) == 0:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'stateful_set_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_stateful_sets(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the stateful sets in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'stateful_set_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_stateful_sets, response_get_stateful_sets = k8s_obj.get_stateful_sets(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_stateful_sets:
+                                            labels = get_labels_from_items(
+                                                response_get_stateful_sets.get('items'))
+                                            cluster_details.update({
+                                                'stateful_set_details': response_get_stateful_sets,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_stateful_sets})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch stateful set details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -1878,7 +1383,7 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def get_all_replica_set_details(self):
+    def get_replica_set_details(self):
         """
         Get the detail of all the replica sets of all the clusters in alibaba console
         :return:
@@ -1887,105 +1392,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                if len(response) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'replica_set_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_replica_sets(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the replica set  in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'replica_set_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_replica_sets, response_get_replica_sets = k8s_obj.get_replica_sets(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_replica_sets:
+                                            labels = get_labels_from_items(
+                                                response_get_replica_sets.get('items'))
+                                            cluster_details.update({
+                                                'replica_set_details': response_get_replica_sets,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_replica_sets})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch replica set details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -1993,7 +1452,7 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def get_all_daemon_set_details(self):
+    def get_daemon_set_details(self):
         """
         Get the detail of all the daemon sets of all the clusters in alibaba console
         :return:
@@ -2002,105 +1461,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                if len(response) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'daemon_set_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_daemon_sets(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the daemon set in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'daemon_set_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_daemon_sets, response_get_daemon_sets = k8s_obj.get_daemon_sets(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_daemon_sets:
+                                            labels = get_labels_from_items(
+                                                response_get_daemon_sets.get('items'))
+                                            cluster_details.update({
+                                                'daemon_set_details': response_get_daemon_sets,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_daemon_sets})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch daemon set details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -2108,7 +1521,7 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def get_all_config_map_details(self):
+    def get_config_map_details(self):
         """
         Get the detail of all the config map of all the clusters in alibaba console
         :return:
@@ -2117,105 +1530,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                if len(response) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'config_map_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_config_maps(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the config map in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'config_map_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_config_maps, response_get_config_maps = k8s_obj.get_config_maps(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_config_maps:
+                                            labels = get_labels_from_items(
+                                                response_get_config_maps.get('items'))
+                                            cluster_details.update({
+                                                'config_map_details': response_get_config_maps,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_config_maps})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch config map details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -2223,7 +1590,7 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def get_all_ingress_details(self):
+    def get_ingress_details(self):
         """
         Get the detail of all the ingress of all the clusters in alibaba console
         :return:
@@ -2232,105 +1599,59 @@ class Alibaba_CS:
         error = False
         response = []
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                if len(response) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in response:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {'cluster_id': cluster_id,
                                            'ingress_details': {},
                                            'cluster_name': cluster.get('name'),
                                            'labels': {},
                                            'error': None}
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'True' in str(cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'running' in cluster.get(
                                         'state'):
-                                    error, response = self.describe_cluster_config(cluster_id)
-                                    if not error:
-                                        cluster_config = json.loads(response)
-                                        if 'config' in cluster_config:
-                                            cluster_config = json.dumps(
-                                                yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                            error, response = create_cluster_config_file(cluster_id,
-                                                                                         json.loads(cluster_config))
-                                            if not error:
-                                                config_path = os.path.join(config_dumps_path,
-                                                                           cluster_id,
-                                                                           'config')
-                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                error, response = k8_obj.get_token()
-                                                if not error:
-                                                    # If token is created
-                                                    cluster_url = None
-                                                    cluster_config = json.loads(cluster_config)
-                                                    for item in cluster_config.get('clusters'):
-                                                        cluster_info_token = item.get('cluster')
-                                                        cluster_url = cluster_info_token.get('server')
-                                                    if cluster_url is not None:
-                                                        error, response = k8_obj.get_ingress_details(
-                                                            cluster_url=cluster_url,
-                                                            token=response)
-                                                        if not error:
-                                                            # Adding unique labels for the ingress in a single cluster
-                                                            label_dict = {}
-                                                            for element in response.get('items'):
-                                                                # if metadata is empty or not present then labels
-                                                                # will be empty dictionary {}
-                                                                if 'metadata' in element and element.get(
-                                                                        'metadata') is not None:
-                                                                    # if metadata is empty or not present then labels
-                                                                    # will be empty dictionary {}
-                                                                    if 'labels' in element.get('metadata') and \
-                                                                            element.get('metadata').get(
-                                                                                'labels') is not None:
-                                                                        for key, value in element.get('metadata').get(
-                                                                                'labels').items():
-                                                                            if key in label_dict:
-                                                                                # Adding the label value
-                                                                                if not value in label_dict.get(key):
-                                                                                    label_dict.get(key).append(value)
-                                                                            else:
-                                                                                label_dict.update({key: [value]})
-
-                                                            cluster_details.update({
-                                                                'ingress_details': response,
-                                                                'labels': label_dict
-                                                            })
-                                                        else:
-                                                            cluster_details.update({'error': response})
-                                                    else:
-                                                        cluster_details.update(
-                                                            {'error': 'Unable to find the cluster endpoint'})
-                                                else:
-                                                    # If token is not created
-                                                    cluster_details.update({'error': response})
-                                            else:
-                                                # If error while generating config file for a particular cluster
-                                                cluster_details.update({'error': response})
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_ingresses, response_get_ingresses = k8s_obj.get_ingresses(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_ingresses:
+                                            labels = get_labels_from_items(
+                                                response_get_ingresses.get('items'))
+                                            cluster_details.update({
+                                                'ingress_details': response_get_ingresses,
+                                                'labels': labels
+                                            })
                                         else:
-                                            # If config key not present in Alibaba response
-                                            cluster_details.update({'error': 'Unable to find cluster config details'})
+                                            cluster_details.update({'error': response_get_ingresses})
                                     else:
-                                        cluster_details.update({'error': response})
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
                                 else:
-                                    # If Eip is not present in cluster
-                                    cluster_details.update(
-                                        {
-                                            'error': 'Eip is not available or cluster is in failed state, unable to fetch all ingress details'})
+                                    # If cluster is not in running state
+                                    cluster_details.update({'error': 'Cluster is not in running state'})
                             else:
-                                cluster_details.update(
-                                    {
-                                        'error': 'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                cluster_details.update({
+                                    'error':
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                })
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -2338,7 +1659,7 @@ class Alibaba_CS:
         finally:
             return error, response
 
-    def create_from_yaml(self, cluster_id, data, namespace):
+    def create_k8s_object(self, cluster_id, data, namespace):
         """
         Create the kubernetes object on the cluster in alibaba console
         :param cluster_id:
@@ -2349,85 +1670,54 @@ class Alibaba_CS:
         response = None
         error = False
         try:
-            error, response = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
-                describe_clusters_response = response
+                describe_clusters_response = response_describe_all_clusters
                 if len(describe_clusters_response) == 0:
                     # If no cluster are present in the current cloud provider
                     raise Exception('No clusters are present in the current provider.')
                 else:
                     # if cluster are present in the current cloud provider
+                    cluster_accessed_flag = False
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                cluster_accessed_flag = True
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                error, response = k8_obj.create_from_yaml(
-                                                                    cluster_id=cluster_id, data=data,
-                                                                    namespace=namespace)
-                                                                if error:
-                                                                    # If any error occurred while
-                                                                    # creating application using file
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
-                                            else:
-                                                raise Exception(response)
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+
+                                            error_create_k8s_object, response_create_k8s_object = k8s_obj.create_k8s_object(
+                                                cluster_id=cluster_id,
+                                                data=data,
+                                                namespace=namespace)
+
+                                            if error_create_k8s_object:
+                                                # If any error occurred while
+                                                # creating application using file
+                                                raise Exception(response_create_k8s_object)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
-                            else:
-                                # invalid cluster_id provided
-                                raise Exception('Invalid cluster_id provided.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
+                    if not cluster_accessed_flag:
+                        # invalid cluster_id provided
+                        raise Exception('Invalid cluster_id provided.')
             else:
-                raise Exception(response)
+                raise Exception(response_describe_all_clusters)
 
         except Exception as e:
             error = True
@@ -2444,25 +1734,25 @@ class Alibaba_CS:
         error = False
         cluster_details_list = []
         try:
-            error, result = self.describe_all_clusters()
+            error, response_describe_all_clusters = self.describe_all_clusters()
 
             if not error:
                 # access_key_secret_key['name']: cluster_details_list
-                if len(result) == 0:
+                if len(response_describe_all_clusters) == 0:
                     response = []
                 else:
-                    for cluster in result:
+                    for cluster in response_describe_all_clusters:
                         cluster_id = cluster.get('cluster_id')
                         cluster_details = {
                             'cluster_id': cluster_id,
                             'config': {},
                             'error': None
                         }
-                        error, response = self.check_database_state_and_update(cluster)
+                        error, response_check_database_state_and_update = self.check_database_state_and_update(cluster)
                         if not error:
-                            error, response = self.describe_cluster_config(cluster_id)
+                            error, response_describe_cluster_config = self.describe_cluster_config(cluster_id)
                             if not error:
-                                cluster_config = json.loads(response)
+                                cluster_config = json.loads(response_describe_cluster_config)
                                 if 'config' in cluster_config:
                                     cluster_config = yaml.load(cluster_config.get('config'), yaml.FullLoader)
                                     cluster_details.update({
@@ -2474,7 +1764,7 @@ class Alibaba_CS:
                                     })
                             else:
                                 cluster_details.update({
-                                    'error': response
+                                    'error': response_describe_cluster_config
                                 })
                         else:
                             cluster_details.update({
@@ -2484,7 +1774,7 @@ class Alibaba_CS:
                     response = cluster_details_list
             else:
                 # skip if any error occurred for a particular key
-                response = result
+                response = response_describe_all_clusters
 
         except Exception as e:
             error = True
@@ -2541,88 +1831,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_pods(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_pods(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -2649,88 +1905,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_persistent_volume_claims(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_persistent_volume_claims(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -2757,88 +1979,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_cron_jobs(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_cron_jobs(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -2865,88 +2053,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_daemon_sets(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_daemon_sets(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -2973,88 +2127,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_deployments(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_deployments(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -3081,88 +2201,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_jobs(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_jobs(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -3189,88 +2275,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_replica_sets(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_replica_sets(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -3297,88 +2349,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_replication_controllers(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_replication_controllers(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -3405,88 +2423,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_stateful_sets(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_stateful_sets(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -3513,88 +2497,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_services(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_services(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -3620,85 +2570,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_persistent_volumes(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_without_namespace(
-                                                                        items, name, cluster_url, token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_persistent_volumes(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_without_namespace(
+                                                    objects=response_objects, name=name,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -3724,85 +2643,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_storage_class(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_without_namespace(
-                                                                        items, name, cluster_url, token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_storage_classes(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_without_namespace(
+                                                    objects=response_objects, name=name,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -3829,88 +2717,54 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_config_maps(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_config_maps(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
-
         except Exception as e:
             error = True
             response = e.message
@@ -3937,88 +2791,128 @@ class Alibaba_CS:
                     # if cluster is present in the given provider
                     access_flag_for_cluster_id = True
                     for cluster in describe_clusters_response:
-                        error, response = self.check_database_state_and_update(cluster)
-                        if not error:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
-                                # valid cluster_id provided
                                 access_flag_for_cluster_id = False
-                                if 'running' in cluster.get('state'):
-                                    # if cluster is in running state
-                                    if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                        if 'True' in str(
-                                                cluster.get('parameters').get('Eip')) and 'running' in cluster.get(
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
                                             'state'):
-                                            error, response = self.describe_cluster_config(cluster_id)
-                                            if not error:
-                                                cluster_config = json.loads(response)
-                                                if 'config' in cluster_config:
-                                                    cluster_config = json.dumps(
-                                                        yaml.load(cluster_config.get('config'), yaml.FullLoader))
-                                                    error, response = create_cluster_config_file(
-                                                        cluster_id,
-                                                        json.loads(cluster_config))
-                                                    if not error:
-                                                        config_path = os.path.join(config_dumps_path,
-                                                                                   cluster_id,
-                                                                                   'config')
-                                                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                                        error, response = k8_obj.get_token()
-                                                        if not error:
-                                                            # If token is created
-                                                            cluster_url = None
-                                                            cluster_config = json.loads(cluster_config)
-                                                            for item in cluster_config.get('clusters'):
-                                                                cluster_info_token = item.get('cluster')
-                                                                cluster_url = cluster_info_token.get('server')
-                                                            if cluster_url is not None:
-                                                                token = response
-                                                                error, response = k8_obj.get_secrets(
-                                                                    cluster_url=cluster_url,
-                                                                    token=token)
-                                                                if not error:
-                                                                    items = response
-                                                                    error, response = k8_obj.delete_object_with_namespace(
-                                                                        items, name,
-                                                                        namespace,
-                                                                        cluster_url,
-                                                                        token)
-                                                                    if error:
-                                                                        # Unable to delete object
-                                                                        raise Exception(response)
-                                                                else:
-                                                                    # Unable to fetch object details
-                                                                    raise Exception(response)
-                                                            else:
-                                                                raise Exception('Unable to find the cluster endpoint')
-                                                        else:
-                                                            # If token is not created
-                                                            raise Exception(response)
-                                                    else:
-                                                        # If error while generating config file for a particular cluster
-                                                        raise Exception(response)
-                                                else:
-                                                    # If config key not present in Alibaba response
-                                                    raise Exception('Unable to find cluster config details')
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_secrets(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
                                             else:
-                                                raise Exception(response)
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
                                         else:
-                                            raise Exception(
-                                                'Eip is not available or cluster is in failed state, unable to fetch details')
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
-                                        raise Exception(
-                                            'Unable to find the parameter for cluster. '
-                                            'Either it is in initial or failed state')
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    # if cluster is not in running state
-                                    raise Exception('Cluster is not in running state.')
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                         else:
-                            raise Exception(response)
+                            raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
                     if access_flag_for_cluster_id:
                         raise Exception('Invalid cluster_id provided.')
             else:
                 raise Exception(describe_clusters_response)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
 
+    def delete_ingress(self, name, namespace, cluster_id):
+        """
+        Delete the kubernetes object on the cluster in alibaba console
+        :param name:
+        :param namespace:
+        :param cluster_id:
+        :return:
+        """
+        response = None
+        error = False
+        try:
+            error, describe_clusters_response = self.describe_all_clusters()
+            if not error:
+                if len(describe_clusters_response) == 0:
+                    # If no cluster are present in the current cloud provider
+                    raise Exception('No clusters are present in the current provider.')
+                else:
+                    # if cluster is present in the given provider
+                    access_flag_for_cluster_id = True
+                    for cluster in describe_clusters_response:
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
+                            if cluster_id == cluster.get('cluster_id'):
+                                access_flag_for_cluster_id = False
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
+                                            'state'):
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_pods, response_objects = k8s_obj.get_ingresses(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+
+                                            if not error_get_pods:
+                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                    objects=response_objects, name=name, namespace=namespace,
+                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_public_endpoint'),
+                                                    token=response_describe_cluster_config_token_endpoint.get(
+                                                        'cluster_token')
+                                                )
+                                                if error_delete_object_with_namespace:
+                                                    # Unable to delete object
+                                                    raise Exception(response_delete_object_with_namespace)
+                                            else:
+                                                # Unable to delete object
+                                                raise Exception(response_objects)
+                                        else:
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                    else:
+                                        # If cluster is not in running state
+                                        raise Exception('Cluster is not in running state')
+                                else:
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                        else:
+                            raise Exception(response_check_database_state_and_update)
+                    # if invalid cluster_id is provided
+                    if access_flag_for_cluster_id:
+                        raise Exception('Invalid cluster_id provided.')
+            else:
+                raise Exception(describe_clusters_response)
         except Exception as e:
             error = True
             response = e.message

@@ -3,9 +3,10 @@ import os
 import time
 
 import requests
+from cryptography.fernet import Fernet
 from django.db import connection
 
-from clusterProvisioningClient.settings import BASE_DIR, decrypt_credentials_api_endpoint
+from clusterProvisioningClient.settings import BASE_DIR, decrypt_credentials_api_endpoint, SECRET_KEY, ENCRYPTION_KEY
 
 
 def get_access_key_secret_key_list(user_id=None):
@@ -133,11 +134,12 @@ def insert_or_update_cluster_details(params=None):
     error = False
     response = None
     try:
+        fernet_object = Fernet(ENCRYPTION_KEY)
         cursor = connection.cursor()
         user_id = int(params.get('user_id'))
         provider_id = int(params.get('provider_id'))
         cluster_id = str(params.get('cluster_id'))
-        cluster_details = params.get('cluster_details')
+        cluster_details = fernet_object.encrypt(str(params.get('cluster_details')))
         status = params.get('status')
         operation = params.get('operation')
         if params.get('is_insert'):
@@ -360,7 +362,10 @@ def get_grouped_credential_list(credentials):
             secret_key = None
             for element in credentials:
                 if element.get('client_id') == access_key:
-                    provider_name_list.append(element.get('name'))
+                    provider_name_list.append({
+                        'name': element.get('name'),
+                        'id': element.get('id')
+                    })
                     secret_key = element.get('client_secret')
             credential_json.update({
                 'provider_name_list': provider_name_list,
@@ -400,4 +405,97 @@ def check_for_provider_id(provider_id, credentials):
         error = True
         response = e.message
     finally:
+        return error, response
+
+
+def insert_or_update_cluster_config_details(params=None):
+    """
+    insert or update the cluster details in the database
+    :param params:
+    :return:
+    """
+    cursor = None
+    error = False
+    response = None
+    fernet_object = Fernet(ENCRYPTION_KEY)
+    try:
+        cursor = connection.cursor()
+        provider = str(params.get('provider'))
+        cluster_id = str(params.get('cluster_id'))
+        cluster_public_endpoint = str(params.get('cluster_public_endpoint'))
+        cluster_config = fernet_object.encrypt(str(params.get('cluster_config')))
+        cluster_token = fernet_object.encrypt(str(params.get('cluster_token')))
+        if params.get('is_insert'):
+            cmd = "INSERT INTO public._cb_cp_cluster_config_details(provider, cluster_id, cluster_public_endpoint, " \
+                  "cluster_config, cluster_token) VALUES ('{provider}','{cluster_id}','{cluster_public_endpoint}','{cluster_config}'" \
+                  ",'{cluster_token}')".format(
+                provider=provider, cluster_id=str(cluster_id),
+                cluster_public_endpoint=cluster_public_endpoint,
+                cluster_config=cluster_config,
+                cluster_token=cluster_token
+            )
+            cursor.execute(cmd)
+            connection.commit()
+            response = 'Success'
+        else:
+            # update operation
+            cmd = "UPDATE public._cb_cp_cluster_config_details SET cluster_config = '{cluster_config}', cluster_token = " \
+                  "'{cluster_token}' where provider = '{provider}' and cluster_id = '{cluster_id}'".format(
+                cluster_config=cluster_config,
+                cluster_token=cluster_token,
+                provider=provider,
+                cluster_id=cluster_id
+            )
+            cursor.execute(cmd)
+            connection.commit()
+            response = 'Success'
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return error, response
+
+
+def get_cluster_config_details(provider, cluster_id):
+    """
+    retrieve the data of s2i images from db
+    :param provider:
+    :param cluster_id:
+    :return:
+    """
+    cursor = None
+    error = False
+    result = None
+    cluster_config_details = {}
+    fernet_object = Fernet(ENCRYPTION_KEY)
+    response = None
+    try:
+        cursor = connection.cursor()
+        sql_cmd = "SELECT cluster_public_endpoint, cluster_config, cluster_token FROM " \
+                  "public._cb_cp_cluster_config_details where provider = " \
+                  "'{provider}' and cluster_id = '{cluster_id}'".format(
+            provider=provider,
+            cluster_id=cluster_id)
+        cursor.execute(sql_cmd)
+        result = cursor.fetchall()
+        if len(result) > 0:
+            result = result[0]
+            cluster_config = fernet_object.decrypt(bytes(result[1]))
+            cluster_token = str(result[2])
+            cluster_token = fernet_object.decrypt(cluster_token)
+            cluster_config_details.update({
+                'cluster_public_endpoint': result[0],
+                'cluster_config': cluster_config,
+                'cluster_token': cluster_token
+            })
+        response = cluster_config_details
+
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
         return error, response

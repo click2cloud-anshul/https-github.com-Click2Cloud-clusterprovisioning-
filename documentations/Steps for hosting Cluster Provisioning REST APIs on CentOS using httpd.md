@@ -38,7 +38,8 @@ DB_Name=XXXXX
 DB_User=XXXXX
 DB_Password=XXXXX
 DB_Host=XXXXX
-DB_Port=XXXXX
+DB_Port=XXXXX
+ENCRYPTION_KEY=XXXXX
 
 #replace XXXXX with its desired values.
 ```

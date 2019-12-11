@@ -33,6 +33,8 @@ decrypt_credentials_api_endpoint = os.getenv("CB_Node_Service") + '/api/v1/decry
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'q86qt8+hbl2kmm#%o^jcgpax3phc+52k$or07nt-*gtut1-9(v'
 
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 

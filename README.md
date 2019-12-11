@@ -7,6 +7,7 @@
 - **DB_Password**
 - **DB_Port** (Default: `5432`)
 - **CB_Node_Service** (For credentials decryption)
+- **ENCRYPTION_KEY** (For Cluster Configuration encryption and decryption)
 
 ### Note: Also supports dotenv (.env) file to load environment variables at path clusterProvisioningClient/.
 

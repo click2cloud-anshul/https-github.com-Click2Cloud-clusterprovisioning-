@@ -1,3 +1,4 @@
+import base64
 import json
 
 from django.http import JsonResponse
@@ -9,7 +10,7 @@ from cluster.others.miscellaneous_operation import key_validations_cluster_provi
     get_grouped_credential_list, check_for_provider_id, insert_or_update_cluster_details
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def alibaba_region_list(request):
     """
     get the list of the available regions
@@ -81,7 +82,7 @@ def alibaba_region_list(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def alibaba_instance_list(request):
     """
     get the list of the available instances
@@ -174,7 +175,7 @@ def alibaba_instance_list(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def alibaba_ssh_key_pair_list(request):
     """
     get the list of names of ssh key pairs in a particular region
@@ -246,7 +247,7 @@ def alibaba_ssh_key_pair_list(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def alibaba_network_details(request):
     """
     get the network details including vpc, vswitchId
@@ -318,7 +319,7 @@ def alibaba_network_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_pod_details(request):
     """
     get the details of all pods available in the alibaba
@@ -333,54 +334,55 @@ def all_pod_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_pod_details()
+                        error_get_pod_details, result_get_pod_details = alibaba_cs.get_pod_details()
 
-                        if not error:
+                        if not error_get_pod_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_pod_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_pod_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_pod_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -390,7 +392,7 @@ def all_pod_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_namespace_details(request):
     """
     get the details of all namespaces available in the alibaba
@@ -405,54 +407,55 @@ def all_namespace_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_namespace_details()
+                        error_get_namespace_details, result_get_namespace_details = alibaba_cs.get_namespace_details()
 
-                        if not error:
+                        if not error_get_namespace_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_namespace_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_namespace_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_namespace_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -462,7 +465,7 @@ def all_namespace_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_role_details(request):
     """
     get the details of all roles available in the alibaba
@@ -477,54 +480,55 @@ def all_role_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_role_details()
+                        error_get_role_details, result_get_role_details = alibaba_cs.get_role_details()
 
-                        if not error:
+                        if not error_get_role_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_role_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_role_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_role_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -534,7 +538,7 @@ def all_role_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_persistent_volume_details(request):
     """
     get the details of all persistent volumes available in the alibaba
@@ -549,54 +553,55 @@ def all_persistent_volume_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_persistent_volume_details()
+                        error_get_persistent_volume_details, result_get_persistent_volume_details = alibaba_cs.get_persistent_volume_details()
 
-                        if not error:
+                        if not error_get_persistent_volume_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_persistent_volume_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_persistent_volume_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_persistent_volume_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -606,7 +611,7 @@ def all_persistent_volume_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_persistent_volume_claim_details(request):
     """
     get the details of all persistent volume claims available in the alibaba
@@ -621,54 +626,55 @@ def all_persistent_volume_claim_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_persistent_volume_claims_details()
+                        error_get_persistent_volume_claims_details, result_get_persistent_volume_claims_details = alibaba_cs.get_persistent_volume_claims_details()
 
-                        if not error:
+                        if not error_get_persistent_volume_claims_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_persistent_volume_claims_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_persistent_volume_claims_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_persistent_volume_claims_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -678,7 +684,7 @@ def all_persistent_volume_claim_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_deployment_details(request):
     """
     get the details of all persistent volume claims available in the alibaba
@@ -693,54 +699,55 @@ def all_deployment_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_deployment_details()
+                        error_get_deployment_details, result_get_deployment_details = alibaba_cs.get_deployment_details()
 
-                        if not error:
+                        if not error_get_deployment_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_deployment_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_deployment_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_deployment_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -750,7 +757,7 @@ def all_deployment_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_secret_details(request):
     """
     get the details of all secret available in the alibaba
@@ -765,54 +772,55 @@ def all_secret_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_secret_details()
+                        error_get_secret_details, result_get_secret_details = alibaba_cs.get_secret_details()
 
-                        if not error:
+                        if not error_get_secret_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_secret_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_secret_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_secret_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -822,7 +830,7 @@ def all_secret_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_node_details(request):
     """
     get the details of all node available in the alibaba
@@ -837,53 +845,55 @@ def all_node_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_node_details()
-                        if not error:
+                        error_get_node_details, result_get_node_details = alibaba_cs.get_node_details()
+
+                        if not error_get_node_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_node_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_node_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_node_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -893,7 +903,7 @@ def all_node_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_service_details(request):
     """
     get the details of all service available in the alibaba
@@ -908,54 +918,55 @@ def all_service_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_service_details()
+                        error_get_service_details, result_get_service_details = alibaba_cs.get_service_details()
 
-                        if not error:
+                        if not error_get_service_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_service_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_service_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_service_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -965,7 +976,7 @@ def all_service_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_cron_job_details(request):
     """
     get the details of all cron jobs available in the alibaba
@@ -980,54 +991,55 @@ def all_cron_job_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_cron_job_details()
+                        error_get_cron_job_details, result_get_cron_job_details = alibaba_cs.get_cron_job_details()
 
-                        if not error:
+                        if not error_get_cron_job_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_cron_job_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_cron_job_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_cron_job_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1037,7 +1049,7 @@ def all_cron_job_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_job_details(request):
     """
     get the details of all jobs available in the alibaba
@@ -1052,54 +1064,55 @@ def all_job_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_job_details()
+                        error_get_job_details, result_get_job_details = alibaba_cs.get_job_details()
 
-                        if not error:
+                        if not error_get_job_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_job_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_job_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_job_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1109,7 +1122,7 @@ def all_job_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_storage_class_details(request):
     """
     get the details of all storage class available in the alibaba
@@ -1124,54 +1137,55 @@ def all_storage_class_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_all_storage_class_details()
+                        error_get_storage_class_details, result_get_storage_class_details = alibaba_cs.get_storage_class_details()
 
-                        if not error:
+                        if not error_get_storage_class_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_storage_class_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_storage_class_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_storage_class_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1181,7 +1195,7 @@ def all_storage_class_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_replication_controller_details(request):
     """
     get the details of all replication controllers available in the alibaba
@@ -1196,54 +1210,55 @@ def all_replication_controller_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_all_replication_controller_details()
+                        error_get_replication_controller_details, result_get_replication_controller_details = alibaba_cs.get_replication_controller_details()
 
-                        if not error:
+                        if not error_get_replication_controller_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_replication_controller_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_replication_controller_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_replication_controller_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1253,7 +1268,7 @@ def all_replication_controller_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_stateful_sets_details(request):
     """
     get the details of all stateful sets available in the alibaba
@@ -1268,51 +1283,55 @@ def all_stateful_sets_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_all_stateful_set_details()
+                        error_get_stateful_set_details, result_get_stateful_set_details = alibaba_cs.get_stateful_set_details()
 
-                        if not error:
+                        if not error_get_stateful_set_details:
+                            # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_stateful_set_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_stateful_set_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_stateful_sets_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1322,7 +1341,7 @@ def all_stateful_sets_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_replica_sets_details(request):
     """
     get the details of all replica sets available in the alibaba
@@ -1337,54 +1356,55 @@ def all_replica_sets_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_all_replica_set_details()
+                        error_get_replica_set_details, result_get_replica_set_details = alibaba_cs.get_replica_set_details()
 
-                        if not error:
+                        if not error_get_replica_set_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_replica_set_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_replica_set_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_replica_set_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1394,7 +1414,7 @@ def all_replica_sets_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_daemon_set_details(request):
     """
     get the details of all daemon sets available in the alibaba
@@ -1409,54 +1429,55 @@ def all_daemon_set_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_all_daemon_set_details()
+                        error_get_daemon_set_details, result_get_daemon_set_details = alibaba_cs.get_daemon_set_details()
 
-                        if not error:
+                        if not error_get_daemon_set_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_daemon_set_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_daemon_set_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
-                                    'all_replica_sets_details': all_provider_cluster_details,
+                                    'all_daemon_set_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1466,7 +1487,7 @@ def all_daemon_set_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_config_map_details(request):
     """
     get the details of all config map available in the alibaba
@@ -1481,53 +1502,55 @@ def all_config_map_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
 
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
 
-                    for credential in response:
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_all_config_map_details()
+                        error_get_config_map_details, result_get_config_map_details = alibaba_cs.get_config_map_details()
 
-                        if not error:
+                        if not error_get_config_map_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_config_map_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_config_map_details})
                         all_provider_cluster_details.append(providers_cluster_info)
                     api_response = {'is_successful': True,
                                     'all_config_map_details': all_provider_cluster_details,
                                     'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1537,7 +1560,7 @@ def all_config_map_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_ingress_details(request):
     """
     get the details of all ingress available in the alibaba
@@ -1552,50 +1575,55 @@ def all_ingress_details(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
             api_response.update({
-                'error': response.get('error'),
+                'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
+
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
-                error, response = get_grouped_credential_list(response)
-                if not error:
-                    for credential in response:
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
+
+                    for credential in response_get_grouped_credential_list:
                         providers_cluster_info = {}
                         alibaba_cs = Alibaba_CS(
                             ali_access_key=credential.get('access_key'),
                             ali_secret_key=credential.get('secret_key'),
                             region_id='default'
                         )
-                        error, result = alibaba_cs.get_all_ingress_details()
+                        error_get_ingress_details, result_get_ingress_details = alibaba_cs.get_ingress_details()
 
-                        if not error:
+                        if not error_get_ingress_details:
                             # access_key_secret_key['name']: cluster_details_list
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
-                                'cluster_list': result})
+                                'cluster_list': result_get_ingress_details})
                         else:
                             # skip if any error occurred for a particular key
                             providers_cluster_info.update({
                                 'provider_names': credential.get('provider_name_list'),
                                 'cluster_list': [],
-                                'error': result})
+                                'error': result_get_ingress_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response.update({'all_ingress_details': all_provider_cluster_details})
+                    api_response = {'is_successful': True,
+                                    'all_ingress_details': all_provider_cluster_details,
+                                    'error': None}
                 else:
                     api_response.update({'is_successful': False,
-                                         'error': response})
+                                         'error': response_get_grouped_credential_list})
             else:
                 api_response.update({'is_successful': False,
-                                     'error': response})
-
-
+                                     'error': response_get_access_key_secret_key_list})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1606,7 +1634,7 @@ def all_ingress_details(request):
 
 
 @api_view(['POST'])
-def create_app(request):
+def create_application(request):
     """
     create application on kubernetes cluster on the alibaba
     :param request:
@@ -1620,42 +1648,46 @@ def create_app(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id', 'provider_id', 'cluster_id', 'application_body', 'namespace']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if not error:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if not error_key_validations_cluster_provisioning:
             user_id = json_request.get('user_id')
             provider_id = json_request.get('provider_id')
             cluster_id = json_request.get('cluster_id')
             application_body = json_request.get('application_body')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
-                error, response = check_for_provider_id(provider_id, response)
-                if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
+                error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
+                    provider_id, response_get_access_key_secret_key_list)
+                if not error_check_for_provider_id:
                     # if provider_id present in credentials from database
                     alibaba_cs = Alibaba_CS(
-                        ali_access_key=response.get('client_id'),
-                        ali_secret_key=response.get('client_secret'),
+                        ali_access_key=response_check_for_provider_id.get('client_id'),
+                        ali_secret_key=response_check_for_provider_id.get('client_secret'),
                         region_id='default'
                     )
-                    error, response = alibaba_cs.create_from_yaml(cluster_id=cluster_id, data=application_body,
-                                                                  namespace=namespace)
-                    if not error:
+                    error_create_from_yaml, response_create_from_yaml = alibaba_cs.create_k8s_object(
+                        cluster_id=cluster_id, data=application_body,
+                        namespace=namespace)
+                    if not error_create_from_yaml:
                         # application successfully created.
                         api_response = {
-                            'created_object_details': response
+                            'created_object_details': response_create_from_yaml
                         }
                     else:
                         # application creation failed.
-                        raise Exception(response)
+                        raise Exception(response_create_from_yaml)
                 else:
                     # if provider_id is not present in credentials
-                    raise Exception(response)
+                    raise Exception(response_check_for_provider_id)
             else:
                 # If user_id is incorrect or no user is found is database
-                raise Exception(response)
+                raise Exception(response_get_access_key_secret_key_list)
         else:
-            raise Exception(response.get('error'))
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
     except Exception as e:
         api_response.update({
             'is_successful': False,
@@ -1665,7 +1697,7 @@ def create_app(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_cluster_details(request):
     """
     get the details of clusters in all providers
@@ -1735,7 +1767,7 @@ def all_cluster_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def all_cluster_config_details(request):
     """
     get the details of clusters config in all providers
@@ -1821,56 +1853,56 @@ def create_kubernetes_cluster(request):
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id', 'provider_id', 'request_body']
         # key validations
-        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
-        if error:
-            api_response.update({
-                'error': response.get('error'),
-                'is_successful': False
-            })
-        else:
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if not error_key_validations_cluster_provisioning:
             user_id = json_request.get('user_id')
             provider_id = json_request.get('provider_id')
-            cluster_request_body = json_request.get('request_body')
+            request_body = json_request.get('request_body')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
-            if not error:
-                error, response = check_for_provider_id(provider_id, response)
-                if not error:
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
+                error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
+                    provider_id, response_get_access_key_secret_key_list)
+                if not error_check_for_provider_id:
                     # if provider_id present in credentials from database
                     alibaba_cs = Alibaba_CS(
-                        ali_access_key=response.get('client_id'),
-                        ali_secret_key=response.get('client_secret'),
+                        ali_access_key=response_check_for_provider_id.get('client_id'),
+                        ali_secret_key=response_check_for_provider_id.get('client_secret'),
                         region_id='default'
                     )
-                    error, response = alibaba_cs.create_cluster(cluster_request_body)
-                    if not error:
-                        # application successfully created.
-
+                    error_create_cluster, response_create_cluster = alibaba_cs.create_cluster(
+                        request_body=request_body)
+                    if not error_create_cluster:
+                        # Database entry for Create
                         api_response.update({
-                            'cluster_detail': response
+                            'cluster_detail': response_create_cluster
                         })
-
                         cluster_info_db.update({
                             'is_insert': True,
                             'user_id': int(user_id),
                             'provider_id': int(provider_id),
-                            'cluster_id': str(response.get('cluster_id')),
-                            'cluster_details': json.dumps(cluster_request_body),
+                            'cluster_id': str(response_create_cluster.get('cluster_id')),
+                            'cluster_details': json.dumps(request_body),
                             'status': 'Initiated',
                             'operation': 'created from cloudbrain', })
-                        error, response = insert_or_update_cluster_details(cluster_info_db)
-                        if error:
-                            response.update({'is_successful': False,
-                                             'error': 'Cluster created but error while inserting data into database'})
+                        error_insert_or_update_cluster_details, response_insert_or_update_cluster_details = insert_or_update_cluster_details(
+                            cluster_info_db)
+                        if error_insert_or_update_cluster_details:
+                            api_response.update({'is_successful': False,
+                                                 'error': 'Cluster created but error while inserting data into database'})
                     else:
                         # application creation failed.
-                        raise Exception(response)
+                        raise Exception(response_create_cluster)
                 else:
                     # if provider_id is not present in credentials
-                    raise Exception(response)
+                    raise Exception(response_check_for_provider_id)
             else:
                 # If user_id is incorrect or no user is found is database
-                raise Exception(response)
+                raise Exception(response_get_access_key_secret_key_list)
+        else:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -2719,6 +2751,71 @@ def alibaba_delete_secret(request):
                         if response:
                             # If cluster exists
                             error, response = alibaba_cs.delete_secret(name, namespace, cluster_id)
+                            if error:
+                                # Unable to delete the pod, otherwise pod gets delete
+                                raise Exception(response)
+                        else:
+                            raise Exception(
+                                'Cluster does not exist in the current provider or it is in creating or deleting state.')
+                    else:
+                        # Cluster does not exist
+                        raise Exception(response)
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response)
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['DELETE'])
+def alibaba_delete_ingress(request):
+    """
+        Delete the object of the existing kubernetes cluster on Alibaba cloud
+        :param request:
+        :return:
+        """
+    api_response = {'is_successful': True,
+                    'error': None}
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'cluster_id', 'name', 'namespace']
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            cluster_id = json_request.get('cluster_id')
+            name = json_request.get('name')
+            namespace = json_request.get('namespace')
+            # Fetching access keys and secret keys from db
+            error, response = get_access_key_secret_key_list(user_id)
+            if not error:
+                error, response = check_for_provider_id(provider_id, response)
+                if not error:
+                    # if provider_id present in credentials from database
+                    alibaba_cs = Alibaba_CS(
+                        ali_access_key=response.get('client_id'),
+                        ali_secret_key=response.get('client_secret'),
+                        region_id='default'
+                    )
+                    error, response = alibaba_cs.is_cluster_exist(cluster_id)
+                    if not error:
+                        if response:
+                            # If cluster exists
+                            error, response = alibaba_cs.delete_ingress(name, namespace, cluster_id)
                             if error:
                                 # Unable to delete the pod, otherwise pod gets delete
                                 raise Exception(response)

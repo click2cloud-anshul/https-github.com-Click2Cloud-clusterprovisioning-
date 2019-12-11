@@ -27,7 +27,7 @@ urlpatterns = [
     url(r'^alibaba/get-all-daemon-set-details$', views.all_daemon_set_details),
     url(r'^alibaba/get-all-config-maps-details$', views.all_config_map_details),
     url(r'^alibaba/get-all-ingress-details$', views.all_ingress_details),
-    url(r'^alibaba/create-application$', views.create_app),
+    url(r'^alibaba/create-application$', views.create_application),
     url(r'^alibaba/create-kubernetes-cluster$', views.create_kubernetes_cluster),
     url(r'^alibaba/delete-kubernetes-cluster$', views.delete_kubernetes_cluster),
     url(r'^alibaba/delete-pod$', views.alibaba_delete_pod),
@@ -42,6 +42,7 @@ urlpatterns = [
     url(r'^alibaba/delete-service$', views.alibaba_delete_service),
     url(r'^alibaba/delete-config-map$', views.alibaba_delete_config_map),
     url(r'^alibaba/delete-secret$', views.alibaba_delete_secret),
+    url(r'^alibaba/delete-ingress$', views.alibaba_delete_ingress),
     url(r'^alibaba/delete-persistent-volume$', views.alibaba_delete_persistent_volume),
     url(r'^alibaba/delete-storage-class$', views.alibaba_delete_storage_class),
 ]

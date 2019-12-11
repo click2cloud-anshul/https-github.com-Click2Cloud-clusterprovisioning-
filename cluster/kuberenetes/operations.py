@@ -111,7 +111,7 @@ class Kubernetes_Operations(object):
         Configuration.set_default(call_config)
         return client.apis.RbacAuthorizationV1Api().create_cluster_role_binding_with_http_info(body=body)
 
-    def create_from_yaml(self, cluster_id, data, namespace):
+    def create_k8s_object(self, cluster_id, data, namespace):
         """
         Creates a new app on kubernetes cluster using data
         :param cluster_id: 
@@ -185,8 +185,11 @@ class Kubernetes_Operations(object):
                             failed_list = []
                             for api_exceptions in api_exception_list:
                                 json_error_body = json.loads(api_exceptions.body)
-                                if 'message' in json_error_body:
-                                    failed_list.append(json_error_body.get('message'))
+                                if 'details' in json_error_body:
+                                    failed_list.append('%s %s already exists' % (
+                                        json_error_body.get('details').get('name'),
+                                        json_error_body.get('details').get('kind')
+                                    ))
                             response = failed_list
                         elif isinstance(exception, ScannerError):
                             response = 'Invalid yaml/json'
@@ -607,7 +610,7 @@ class Kubernetes_Operations(object):
         finally:
             return error, response
 
-    def get_storage_class(self, cluster_url=None, token=None):
+    def get_storage_classes(self, cluster_url=None, token=None):
         """
         it retrives the information for storage class
         :param cluster_url:
@@ -727,7 +730,7 @@ class Kubernetes_Operations(object):
         finally:
             return error, response
 
-    def get_ingress_details(self, cluster_url=None, token=None):
+    def get_ingresses(self, cluster_url=None, token=None):
         """
         it retrives the information for ingress
         :param cluster_url:
