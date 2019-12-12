@@ -242,6 +242,7 @@ class Alibaba_CS:
         :param cluster_id:
         :return:
         """
+        provider = 'Alibaba:Cloud'
         error = False
         response = None
         config_detail = {
@@ -249,13 +250,13 @@ class Alibaba_CS:
             'cluster_public_endpoint': None,
             'cluster_config': None,
             'cluster_token': None,
-            'provider': 'Alibaba:Cloud',
+            'provider': provider,
             'is_insert': False,
             'k8s_object': None
         }
         try:
             error_get_cluster_config_details, response_get_cluster_config_details = get_cluster_config_details(
-                config_detail.get('provider'), cluster_id)
+                provider, cluster_id)
             if not error_get_cluster_config_details:
                 if response_get_cluster_config_details is not None:
                     if len(list(response_get_cluster_config_details)) > 0:
@@ -273,33 +274,37 @@ class Alibaba_CS:
                                               'k8s_object': k8_obj})
                     else:
                         #  if cluster config is not present in database
-                        error_describe_cluster_config, response_describe_cluster_config = self.describe_cluster_config(
-                            cluster_id)
-                        if not error_describe_cluster_config:
-                            # config is generated from Alibaba Cloud
+                        error_describe_cluster_endpoint, response_describe_cluster_endpoint \
+                            = self.describe_cluster_endpoint(cluster_id)
+                        if not error_describe_cluster_endpoint:
+                            if 'api_server_endpoint' in response_describe_cluster_endpoint:
+                                # if cluster has public api server endpoint details blank value can be received
+                                if response_describe_cluster_endpoint.get(
+                                        'api_server_endpoint') is not None and response_describe_cluster_endpoint.get(
+                                    'api_server_endpoint') != '':
+                                    # if cluster has public api server endpoint details
+                                    error_describe_cluster_config, response_describe_cluster_config = self.describe_cluster_config(
+                                        cluster_id)
+                                    if not error_describe_cluster_config:
+                                        # config is generated from Alibaba Cloud
+                                        if 'config' in response_describe_cluster_config:
+                                            # Dumping config file
+                                            cluster_config = json.dumps(
+                                                yaml.load(json.loads(response_describe_cluster_config).get('config'),
+                                                          yaml.FullLoader))
 
-                            if 'config' in response_describe_cluster_config:
-                                cluster_config = json.dumps(
-                                    yaml.load(json.loads(response_describe_cluster_config).get('config'),
-                                              yaml.FullLoader))
-
-                                error_create_cluster_config_file, response_create_cluster_config_file = create_cluster_config_file(
-                                    cluster_id,
-                                    json.loads(cluster_config))
-                                if not error_create_cluster_config_file:
-                                    config_path = os.path.join(config_dumps_path,
-                                                               cluster_id,
-                                                               'config')
-                                    k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                                    error_get_token, response_get_token = k8_obj.get_token()
-                                    if not error_get_token:
-                                        # If token is created
-                                        error_describe_cluster_endpoint, response_describe_cluster_endpoint \
-                                            = self.describe_cluster_endpoint(cluster_id)
-                                        if not error_describe_cluster_endpoint:
-                                            if 'api_server_endpoint' in response_describe_cluster_endpoint:
-                                                if response_describe_cluster_endpoint.get(
-                                                        'api_server_endpoint') is not None:
+                                            error_create_cluster_config_file, response_create_cluster_config_file = create_cluster_config_file(
+                                                cluster_id,
+                                                json.loads(cluster_config))
+                                            if not error_create_cluster_config_file:
+                                                # Dumping config file is successful
+                                                config_path = os.path.join(config_dumps_path,
+                                                                           cluster_id,
+                                                                           'config')
+                                                k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                                                error_get_token, response_get_token = k8_obj.get_token()
+                                                if not error_get_token:
+                                                    # If token is created
                                                     config_detail.update({
                                                         'cluster_public_endpoint': response_describe_cluster_endpoint.get(
                                                             'api_server_endpoint'),
@@ -313,30 +318,30 @@ class Alibaba_CS:
                                                         insert_or_update_cluster_config_details(
                                                             config_detail)
                                                     if error_insert_or_update_cluster_config_details:
-                                                        raise Exception(
-                                                            response_insert_or_update_cluster_config_details)
+                                                        raise Exception(response_insert_or_update_cluster_config_details)
                                                 else:
-                                                    # If cluster api server endpoint key not present in Alibaba response
-                                                    raise Exception(
-                                                        'Unable to find cluster api server endpoint details')
+                                                    # If cluster's token can not be generated
+                                                    raise Exception(response_get_token)
                                             else:
-                                                # If cluster api server endpoint key not present in Alibaba response
-                                                raise Exception('Unable to find cluster api server endpoint details')
+                                                # If cluster's config can not be generated
+                                                raise Exception(response_create_cluster_config_file)
                                         else:
-                                            # If cluster api server endpoint key not present in Alibaba response
-                                            raise Exception(response_describe_cluster_endpoint)
+                                            # If cluster's config can not be generated
+                                            raise Exception('Unable to find cluster config details')
                                     else:
-                                        # If cluster's token can not be generated
-                                        raise Exception(response_get_token)
+                                        # if unable to generate config from Alibaba Cloud
+                                        raise Exception(response_describe_cluster_config)
                                 else:
-                                    # If cluster's config can not be generated
-                                    raise Exception(response_create_cluster_config_file)
+                                    # If cluster api server endpoint key not present in Alibaba response
+                                    raise Exception(
+                                        'Unable to find cluster public api server endpoint details')
                             else:
-                                # If cluster's config can not be generated
-                                raise Exception('Unable to find cluster config details')
+                                # If cluster api server endpoint key not present in Alibaba response
+                                raise Exception('Unable to find cluster public api server endpoint details')
                         else:
-                            # if unable to generate config from Alibaba Cloud
-                            raise Exception(response_describe_cluster_config)
+                            # If cluster api server endpoint key not present in Alibaba response
+                            raise Exception(response_describe_cluster_endpoint)
+
                     response = config_detail
             else:
                 raise Exception(response_get_cluster_config_details)
@@ -560,8 +565,76 @@ class Alibaba_CS:
                         cluster_details = {'cluster_id': cluster_id,
                                            'role_details': {},
                                            'cluster_name': cluster.get('name'),
-                                           'cluster_role_labels': {},
-                                           'role_labels': {},
+                                           'labels': {},
+                                           'error': None}
+                        error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                            cluster)
+                        if not error_check_database_state_and_update:
+                            if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_roles, response_get_roles = k8s_obj.get_roles(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                        if not error_get_roles:
+                                            roles_label_dict = get_labels_from_items(
+                                                response_get_roles.get('role_list').get('items'))
+                                            cluster_details.update({
+                                                'role_details': response_get_roles.get('role_list'),
+                                                'labels': roles_label_dict
+                                            })
+                                        else:
+                                            cluster_details.update({
+                                                'error': response_get_roles})
+                                    else:
+                                        cluster_details.update(
+                                            {'error': response_describe_cluster_config_token_endpoint})
+                                else:
+                                    # If cluster is not in running state
+                                    cluster_details.update(
+                                        {'error': 'Cluster is not in running state'})
+                            else:
+                                cluster_details.update(
+                                    {'error':
+                                         'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                        else:
+                            raise Exception(response_check_database_state_and_update)
+                        cluster_details_list.append(cluster_details)
+                response = cluster_details_list
+            else:
+                raise Exception(response_describe_all_clusters)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_cluster_role_details(self):
+        """
+        Get the detail of all the roles of all the clusters in alibaba console
+        :return:
+        """
+        cluster_details_list = []
+        error = False
+        response = []
+        try:
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                if len(response_describe_all_clusters) == 0:
+                    response = []
+                else:
+                    for cluster in response_describe_all_clusters:
+                        cluster_id = cluster.get('cluster_id')
+                        cluster_details = {'cluster_id': cluster_id,
+                                           'cluster_role_details': {},
+                                           'cluster_name': cluster.get('name'),
+                                           'labels': {},
                                            'error': None}
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
@@ -581,12 +654,9 @@ class Alibaba_CS:
                                         if not error_get_roles:
                                             cluster_roles_label_dict = get_labels_from_items(
                                                 response_get_roles.get('cluster_role_list').get('items'))
-                                            roles_label_dict = get_labels_from_items(
-                                                response_get_roles.get('role_list').get('items'))
                                             cluster_details.update({
-                                                'role_details': response_get_roles,
-                                                'cluster_role_labels': cluster_roles_label_dict,
-                                                'role_labels': roles_label_dict
+                                                'cluster_role_details': response_get_roles.get('cluster_role_list'),
+                                                'labels': cluster_roles_label_dict
                                             })
                                         else:
                                             cluster_details.update({

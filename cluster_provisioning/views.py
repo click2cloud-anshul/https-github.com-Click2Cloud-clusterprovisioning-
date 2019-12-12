@@ -537,6 +537,79 @@ def all_role_details(request):
     finally:
         return JsonResponse(api_response, safe=False)
 
+@api_view(['POST'])
+def all_cluster_role_details(request):
+    """
+    get the details of all roles available in the alibaba
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'all_cluster_role_details': [],
+                    'error': None}
+    all_provider_cluster_details = []
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
+            api_response.update({
+                'error': response_key_validations_cluster_provisioning.get('error'),
+                'is_successful': False
+            })
+
+        else:
+            user_id = json_request.get('user_id')
+            # Fetching access keys and secret keys from db
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id)
+            if not error_get_access_key_secret_key_list:
+                # groups the common credentials according to the access key
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
+
+                    for credential in response_get_grouped_credential_list:
+                        providers_cluster_info = {}
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=credential.get('access_key'),
+                            ali_secret_key=credential.get('secret_key'),
+                            region_id='default'
+                        )
+                        error_get_role_details, result_get_role_details = alibaba_cs.get_cluster_role_details()
+
+                        if not error_get_role_details:
+                            # access_key_secret_key['name']: cluster_details_list
+                            providers_cluster_info.update({
+                                'provider_names': credential.get('provider_name_list'),
+                                'cluster_list': result_get_role_details})
+                        else:
+                            # skip if any error occurred for a particular key
+                            providers_cluster_info.update({
+                                'provider_names': credential.get('provider_name_list'),
+                                'cluster_list': [],
+                                'error': result_get_role_details})
+                        all_provider_cluster_details.append(providers_cluster_info)
+                    api_response = {'is_successful': True,
+                                    'all_cluster_role_details': all_provider_cluster_details,
+                                    'error': None}
+                else:
+                    api_response.update({'is_successful': False,
+                                         'error': response_get_grouped_credential_list})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': response_get_access_key_secret_key_list})
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
 
 @api_view(['POST'])
 def all_persistent_volume_details(request):

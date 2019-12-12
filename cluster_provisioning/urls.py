@@ -10,6 +10,7 @@ urlpatterns = [
     url(r'^alibaba/get-all-clusters-config$', views.all_cluster_config_details),
     url(r'^alibaba/get-all-clusters-details$', views.all_cluster_details),
     url(r'^alibaba/get-all-pod-details$', views.all_pod_details),
+    url(r'^alibaba/get-all-cluster-role-details$', views.all_cluster_role_details),
     url(r'^alibaba/get-all-namespace-details$', views.all_namespace_details),
     url(r'^alibaba/get-all-role-details$', views.all_role_details),
     url(r'^alibaba/get-all-persistent-volume-details$', views.all_persistent_volume_details),

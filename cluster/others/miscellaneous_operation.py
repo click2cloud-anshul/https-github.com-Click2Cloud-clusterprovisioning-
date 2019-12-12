@@ -8,7 +8,7 @@ from django.db import connection
 
 from clusterProvisioningClient.settings import BASE_DIR, decrypt_credentials_api_endpoint, SECRET_KEY, ENCRYPTION_KEY
 
-
+config_dumps_path = os.path.join(BASE_DIR, 'config_dumps')
 def get_access_key_secret_key_list(user_id=None):
     """
     retrieve the list of access keys and secrete keys from db
@@ -44,7 +44,7 @@ def get_access_key_secret_key_list(user_id=None):
 
     except Exception as ex:
         error = True
-        response = 'Cannot connect to server'
+        response = 'Cannot connect to Database server'
     finally:
         if cursor is not None:
             cursor.close()
@@ -330,7 +330,7 @@ def create_cluster_config_file(cluster_id=None, config_details=None):
     error = False
     response = None
     try:
-        path = os.path.join(BASE_DIR, 'config_dumps', cluster_id)
+        path = os.path.join(config_dumps_path, cluster_id)
         if not os.path.exists(path):
             os.makedirs(path)
         path = os.path.join(path, 'config')
@@ -417,8 +417,8 @@ def insert_or_update_cluster_config_details(params=None):
     cursor = None
     error = False
     response = None
-    fernet_object = Fernet(ENCRYPTION_KEY)
     try:
+        fernet_object = Fernet(ENCRYPTION_KEY)
         cursor = connection.cursor()
         provider = str(params.get('provider'))
         cluster_id = str(params.get('cluster_id'))
@@ -469,9 +469,9 @@ def get_cluster_config_details(provider, cluster_id):
     error = False
     result = None
     cluster_config_details = {}
-    fernet_object = Fernet(ENCRYPTION_KEY)
     response = None
     try:
+        fernet_object = Fernet(ENCRYPTION_KEY)
         cursor = connection.cursor()
         sql_cmd = "SELECT cluster_public_endpoint, cluster_config, cluster_token FROM " \
                   "public._cb_cp_cluster_config_details where provider = " \
