@@ -58,6 +58,9 @@ COPY . /usr/src/app/cluster-provisioner/
 RUN mv /usr/src/app/cluster-provisioner/dependency/binaries/s2i /usr/local/bin/
 RUN chmod -R 777 /usr/src/app/*
 
+# Permission denied issue occurs
+RUN chmod 777 /usr/local/bin/s2i
+
 # uWSGI will listen on this port
 EXPOSE 8000
 

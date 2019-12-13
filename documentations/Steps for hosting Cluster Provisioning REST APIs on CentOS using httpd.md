@@ -54,6 +54,7 @@ chmod -R 777 clusterprovisioning/
 ```
 # Move s2i executable to /usr/bin/local
 mv /var/www/html/clusterprovisioning/dependency/binaries/s2i /usr/local/bin/
+chmod 777 /usr/local/bin/s2i
 ```
 **Change the docker.sock file permissions**
 ```
