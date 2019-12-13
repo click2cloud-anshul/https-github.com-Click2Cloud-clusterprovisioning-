@@ -264,14 +264,19 @@ class Alibaba_CS:
                         config_path = os.path.join(config_dumps_path,
                                                    cluster_id,
                                                    'config')
-                        k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
-                        config_detail.update({'cluster_id': cluster_id,
-                                              'cluster_public_endpoint': response_get_cluster_config_details.get(
-                                                  'cluster_public_endpoint'),
-                                              'cluster_config': response_get_cluster_config_details.get(
-                                                  'cluster_config'),
-                                              'cluster_token': response_get_cluster_config_details.get('cluster_token'),
-                                              'k8s_object': k8_obj})
+                        error_create_cluster_config_file, response_create_cluster_config_file = create_cluster_config_file(
+                            cluster_id, eval(response_get_cluster_config_details.get('cluster_config')))
+                        if not error_create_cluster_config_file:
+                            k8_obj = Kubernetes_Operations(configuration_yaml=config_path)
+                            config_detail.update({'cluster_id': cluster_id,
+                                                  'cluster_public_endpoint': response_get_cluster_config_details.get(
+                                                      'cluster_public_endpoint'),
+                                                  'cluster_config': eval(response_get_cluster_config_details.get('cluster_config')),
+                                                  'cluster_token': response_get_cluster_config_details.get(
+                                                      'cluster_token'),
+                                                  'k8s_object': k8_obj})
+                        else:
+                            raise Exception(response_create_cluster_config_file)
                     else:
                         #  if cluster config is not present in database
                         error_describe_cluster_endpoint, response_describe_cluster_endpoint \
@@ -318,7 +323,8 @@ class Alibaba_CS:
                                                         insert_or_update_cluster_config_details(
                                                             config_detail)
                                                     if error_insert_or_update_cluster_config_details:
-                                                        raise Exception(response_insert_or_update_cluster_config_details)
+                                                        raise Exception(
+                                                            response_insert_or_update_cluster_config_details)
                                                 else:
                                                     # If cluster's token can not be generated
                                                     raise Exception(response_get_token)
@@ -341,7 +347,6 @@ class Alibaba_CS:
                         else:
                             # If cluster api server endpoint key not present in Alibaba response
                             raise Exception(response_describe_cluster_endpoint)
-
                     response = config_detail
             else:
                 raise Exception(response_get_cluster_config_details)
