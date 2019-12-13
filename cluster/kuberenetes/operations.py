@@ -182,15 +182,15 @@ class Kubernetes_Operations(object):
                         elif isinstance(exception, FailToCreateError):
                             # response_dict.update({'error': e.api_exceptions})
                             api_exception_list = exception.api_exceptions
-                            failed_list = []
+                            failed_object = ''
                             for api_exceptions in api_exception_list:
                                 json_error_body = json.loads(api_exceptions.body)
                                 if 'details' in json_error_body:
-                                    failed_list.append('%s %s already exists' % (
+                                    failed_object = '%s %s already exists' % (
                                         json_error_body.get('details').get('name'),
                                         json_error_body.get('details').get('kind')
-                                    ))
-                            response = failed_list
+                                    )
+                            response = failed_object
                         elif isinstance(exception, ScannerError):
                             response = 'Invalid yaml/json'
                         else:

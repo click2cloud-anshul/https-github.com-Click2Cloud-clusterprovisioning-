@@ -1715,7 +1715,6 @@ def create_application(request):
     """
     api_response = {
         'is_successful': True,
-        'created_object_details': None,
         'error': None}
     try:
         json_request = json.loads(request.body)
@@ -1745,12 +1744,7 @@ def create_application(request):
                     error_create_from_yaml, response_create_from_yaml = alibaba_cs.create_k8s_object(
                         cluster_id=cluster_id, data=application_body,
                         namespace=namespace)
-                    if not error_create_from_yaml:
-                        # application successfully created.
-                        api_response = {
-                            'created_object_details': response_create_from_yaml
-                        }
-                    else:
+                    if error_create_from_yaml:
                         # application creation failed.
                         raise Exception(response_create_from_yaml)
                 else:
