@@ -70,7 +70,8 @@ Write the below in the file
 ```
 Alias /static /var/www/html/clusterprovisioning/static
 WSGIScriptAlias / /var/www/html/clusterprovisioning/clusterProvisioningClient/wsgi.py
-WSGIDaemonProcess clusterprovisioning  python-path=/var/www/html/clusterprovisioning/clusterProvisioningClient:/usr/lib/python2.7/site-packages
+#WSGIPythonHome /usr/lib/python2.7
+WSGIDaemonProcess clusterprovisioning  python-path=/var/www/html/clusterprovisioning/clusterProvisioningClient:/usr/lib/python2.7/site-packages
 WSGIProcessGroup clusterprovisioning
 <Directory /var/www/html/clusterprovisioning/clusterProvisioningClient>
     <Files wsgi.py>
@@ -93,7 +94,7 @@ ErrorLog /var/log/httpd/clusterprovisioning/error.log
 CustomLog /var/log/httpd/clusterprovisioning/access.log combined
 WSGIScriptAlias / /var/www/html/clusterprovisioning/clusterProvisioningClient/wsgi.py
 #WSGIPythonHome /usr/lib/python2.7
-WSGIDaemonProcess clusterprovisioning  python-path=/var/www/html/clusterprovisioning/clusterProvisioningClient:/usr/lib/python2.7/site-packages
+WSGIDaemonProcess clusterprovisioning  python-path=/var/www/html/clusterprovisioning/clusterProvisioningClient:/usr/lib/python2.7/site-packages
 WSGIProcessGroup clusterprovisioning
 <Directory /var/www/html/clusterprovisioning/clusterProvisioningClient>
     <Files wsgi.py>
