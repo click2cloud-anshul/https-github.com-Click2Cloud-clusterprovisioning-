@@ -230,6 +230,16 @@ class Alibaba_CS:
 
             result = client.do_action_with_exception(request)
             response = json.loads(result)
+        except ServerException as e:
+            error = True
+            error_codes = [400]
+            if e.http_status in error_codes:
+                error_message_splitted = str(e.message).split('ServerResponseBody: ')
+                response = '%s %s' % (
+                    'Error while creating cluster.', json.loads(error_message_splitted[1]).get('message'))
+
+            else:
+                response = 'Unable to access the cluster'
         except Exception as e:
             error = True
             response = e.message
@@ -271,7 +281,8 @@ class Alibaba_CS:
                             config_detail.update({'cluster_id': cluster_id,
                                                   'cluster_public_endpoint': response_get_cluster_config_details.get(
                                                       'cluster_public_endpoint'),
-                                                  'cluster_config': eval(response_get_cluster_config_details.get('cluster_config')),
+                                                  'cluster_config': eval(
+                                                      response_get_cluster_config_details.get('cluster_config')),
                                                   'cluster_token': response_get_cluster_config_details.get(
                                                       'cluster_token'),
                                                   'k8s_object': k8_obj})
@@ -378,6 +389,16 @@ class Alibaba_CS:
             body = ''''''
             request.set_content(body.encode('utf-8'))
             response = client.do_action_with_exception(request)
+        except ServerException as e:
+            error = True
+            error_codes = [400]
+            if e.http_status in error_codes:
+                error_message_splitted = str(e.message).split('ServerResponseBody: ')
+                response = '%s %s' % (
+                    'Error while creating cluster.', json.loads(error_message_splitted[1]).get('message'))
+
+            else:
+                response = 'Unable to access the cluster'
         except Exception as e:
             error = True
             response = e.message
@@ -407,6 +428,16 @@ class Alibaba_CS:
             request.set_content(body.encode('utf-8'))
             response = client.do_action_with_exception(request)
             response = json.loads(response)
+        except ServerException as e:
+            error = True
+            error_codes = [400]
+            if e.http_status in error_codes:
+                error_message_splitted = str(e.message).split('ServerResponseBody: ')
+                response = '%s %s' % (
+                    'Error while creating cluster.', json.loads(error_message_splitted[1]).get('message'))
+
+            else:
+                response = 'Unable to access the cluster'
         except Exception as e:
             error = True
             response = e.message
@@ -1823,27 +1854,33 @@ class Alibaba_CS:
                             'config': {},
                             'error': None
                         }
-                        error, response_check_database_state_and_update = self.check_database_state_and_update(cluster)
-                        if not error:
-                            error, response_describe_cluster_config = self.describe_cluster_config(cluster_id)
+                        if 'running' in cluster.get('state'):
+                            error, response_check_database_state_and_update = self.check_database_state_and_update(
+                                cluster)
                             if not error:
-                                cluster_config = json.loads(response_describe_cluster_config)
-                                if 'config' in cluster_config:
-                                    cluster_config = yaml.load(cluster_config.get('config'), yaml.FullLoader)
-                                    cluster_details.update({
-                                        'config': cluster_config
-                                    })
+                                error, response_describe_cluster_config = self.describe_cluster_config(cluster_id)
+                                if not error:
+                                    cluster_config = json.loads(response_describe_cluster_config)
+                                    if 'config' in cluster_config:
+                                        cluster_config = yaml.load(cluster_config.get('config'), yaml.FullLoader)
+                                        cluster_details.update({
+                                            'config': cluster_config
+                                        })
+                                    else:
+                                        cluster_details.update({
+                                            'error': 'Unable to find cluster config details'
+                                        })
                                 else:
                                     cluster_details.update({
-                                        'error': 'Unable to find cluster config details'
+                                        'error': response_describe_cluster_config
                                     })
                             else:
                                 cluster_details.update({
-                                    'error': response_describe_cluster_config
+                                    'error': response
                                 })
                         else:
                             cluster_details.update({
-                                'error': response
+                                'error': 'Cluster is not in running state'
                             })
                         cluster_details_list.append(cluster_details)
                     response = cluster_details_list
