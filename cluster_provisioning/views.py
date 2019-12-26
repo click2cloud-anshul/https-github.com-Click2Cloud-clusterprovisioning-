@@ -6,6 +6,8 @@ from rest_framework.decorators import api_view
 
 from cluster.alibaba.compute_service import Alibaba_ECS
 from cluster.alibaba.container_service import Alibaba_CS
+from cluster.azure.container_service import Azure_CS
+from cluster.others import miscellaneous_operation
 from cluster.others.miscellaneous_operation import key_validations_cluster_provisioning, get_access_key_secret_key_list, \
     get_grouped_credential_list, check_for_provider_id, insert_or_update_cluster_details
 
@@ -36,7 +38,8 @@ def alibaba_region_list(request):
             user_id = json_request.get('user_id')
             provider_id = json_request.get('provider_id')
             # Fetching access keys and secret keys from db
-            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id,
+                                                                               miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 unique_access_key_list = []
                 if len(list(access_key_secret_key_list)) > 0:
@@ -116,7 +119,8 @@ def alibaba_instance_list(request):
             zone_list = [str(item) for item in zone_id_temp]
             zone_list_length = len(zone_list)
             # Fetching access keys and secret keys from db
-            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id,
+                                                                               miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 unique_access_key_list = []
                 if len(list(access_key_secret_key_list)) > 0:
@@ -202,7 +206,8 @@ def alibaba_ssh_key_pair_list(request):
             region_id = json_request.get('region_id')
 
             # Fetching access keys and secret keys from db
-            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id,
+                                                                               miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 unique_access_key_list = []
                 if len(list(access_key_secret_key_list)) > 0:
@@ -274,7 +279,8 @@ def alibaba_network_details(request):
             region_id = json_request.get('region_id')
 
             # Fetching access keys and secret keys from db
-            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id)
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id,
+                                                                               miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 unique_access_key_list = []
                 if len(list(access_key_secret_key_list)) > 0:
@@ -320,7 +326,7 @@ def alibaba_network_details(request):
 
 
 @api_view(['POST'])
-def all_pod_details(request):
+def alibaba_all_pod_details(request):
     """
     get the details of all pods available in the alibaba
     :param request:
@@ -346,7 +352,7 @@ def all_pod_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -393,7 +399,7 @@ def all_pod_details(request):
 
 
 @api_view(['POST'])
-def all_namespace_details(request):
+def alibaba_all_namespace_details(request):
     """
     get the details of all namespaces available in the alibaba
     :param request:
@@ -419,7 +425,7 @@ def all_namespace_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -466,7 +472,7 @@ def all_namespace_details(request):
 
 
 @api_view(['POST'])
-def all_role_details(request):
+def alibaba_all_role_details(request):
     """
     get the details of all roles available in the alibaba
     :param request:
@@ -492,7 +498,7 @@ def all_role_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -537,8 +543,9 @@ def all_role_details(request):
     finally:
         return JsonResponse(api_response, safe=False)
 
+
 @api_view(['POST'])
-def all_cluster_role_details(request):
+def alibaba_all_cluster_role_details(request):
     """
     get the details of all roles available in the alibaba
     :param request:
@@ -564,7 +571,7 @@ def all_cluster_role_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -610,9 +617,8 @@ def all_cluster_role_details(request):
         return JsonResponse(api_response, safe=False)
 
 
-
 @api_view(['POST'])
-def all_persistent_volume_details(request):
+def alibaba_all_persistent_volume_details(request):
     """
     get the details of all persistent volumes available in the alibaba
     :param request:
@@ -638,7 +644,7 @@ def all_persistent_volume_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -685,7 +691,7 @@ def all_persistent_volume_details(request):
 
 
 @api_view(['POST'])
-def all_persistent_volume_claim_details(request):
+def alibaba_all_persistent_volume_claim_details(request):
     """
     get the details of all persistent volume claims available in the alibaba
     :param request:
@@ -711,7 +717,7 @@ def all_persistent_volume_claim_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -758,7 +764,7 @@ def all_persistent_volume_claim_details(request):
 
 
 @api_view(['POST'])
-def all_deployment_details(request):
+def alibaba_all_deployment_details(request):
     """
     get the details of all persistent volume claims available in the alibaba
     :param request:
@@ -784,7 +790,7 @@ def all_deployment_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -831,7 +837,7 @@ def all_deployment_details(request):
 
 
 @api_view(['POST'])
-def all_secret_details(request):
+def alibaba_all_secret_details(request):
     """
     get the details of all secret available in the alibaba
     :param request:
@@ -857,7 +863,7 @@ def all_secret_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -904,7 +910,7 @@ def all_secret_details(request):
 
 
 @api_view(['POST'])
-def all_node_details(request):
+def alibaba_all_node_details(request):
     """
     get the details of all node available in the alibaba
     :param request:
@@ -930,7 +936,7 @@ def all_node_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -977,7 +983,7 @@ def all_node_details(request):
 
 
 @api_view(['POST'])
-def all_service_details(request):
+def alibaba_all_service_details(request):
     """
     get the details of all service available in the alibaba
     :param request:
@@ -1003,7 +1009,7 @@ def all_service_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1050,7 +1056,7 @@ def all_service_details(request):
 
 
 @api_view(['POST'])
-def all_cron_job_details(request):
+def alibaba_all_cron_job_details(request):
     """
     get the details of all cron jobs available in the alibaba
     :param request:
@@ -1076,7 +1082,7 @@ def all_cron_job_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1123,7 +1129,7 @@ def all_cron_job_details(request):
 
 
 @api_view(['POST'])
-def all_job_details(request):
+def alibaba_all_job_details(request):
     """
     get the details of all jobs available in the alibaba
     :param request:
@@ -1149,7 +1155,7 @@ def all_job_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1196,7 +1202,7 @@ def all_job_details(request):
 
 
 @api_view(['POST'])
-def all_storage_class_details(request):
+def alibaba_all_storage_class_details(request):
     """
     get the details of all storage class available in the alibaba
     :param request:
@@ -1222,7 +1228,7 @@ def all_storage_class_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1269,7 +1275,7 @@ def all_storage_class_details(request):
 
 
 @api_view(['POST'])
-def all_replication_controller_details(request):
+def alibaba_all_replication_controller_details(request):
     """
     get the details of all replication controllers available in the alibaba
     :param request:
@@ -1295,7 +1301,7 @@ def all_replication_controller_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1342,7 +1348,7 @@ def all_replication_controller_details(request):
 
 
 @api_view(['POST'])
-def all_stateful_sets_details(request):
+def alibaba_all_stateful_sets_details(request):
     """
     get the details of all stateful sets available in the alibaba
     :param request:
@@ -1368,7 +1374,7 @@ def all_stateful_sets_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1415,7 +1421,7 @@ def all_stateful_sets_details(request):
 
 
 @api_view(['POST'])
-def all_replica_sets_details(request):
+def alibaba_all_replica_sets_details(request):
     """
     get the details of all replica sets available in the alibaba
     :param request:
@@ -1441,7 +1447,7 @@ def all_replica_sets_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1488,7 +1494,7 @@ def all_replica_sets_details(request):
 
 
 @api_view(['POST'])
-def all_daemon_set_details(request):
+def alibaba_all_daemon_set_details(request):
     """
     get the details of all daemon sets available in the alibaba
     :param request:
@@ -1514,7 +1520,7 @@ def all_daemon_set_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1561,7 +1567,7 @@ def all_daemon_set_details(request):
 
 
 @api_view(['POST'])
-def all_config_map_details(request):
+def alibaba_all_config_map_details(request):
     """
     get the details of all config map available in the alibaba
     :param request:
@@ -1587,7 +1593,7 @@ def all_config_map_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1634,7 +1640,7 @@ def all_config_map_details(request):
 
 
 @api_view(['POST'])
-def all_ingress_details(request):
+def alibaba_all_ingress_details(request):
     """
     get the details of all ingress available in the alibaba
     :param request:
@@ -1660,7 +1666,7 @@ def all_ingress_details(request):
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
@@ -1707,7 +1713,7 @@ def all_ingress_details(request):
 
 
 @api_view(['POST'])
-def create_application(request):
+def alibaba_create_application(request):
     """
     create application on kubernetes cluster on the alibaba
     :param request:
@@ -1730,7 +1736,7 @@ def create_application(request):
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
                     provider_id, response_get_access_key_secret_key_list)
@@ -1765,7 +1771,7 @@ def create_application(request):
 
 
 @api_view(['POST'])
-def all_cluster_details(request):
+def alibaba_all_cluster_details(request):
     """
     get the details of clusters in all providers
     :param request:
@@ -1789,7 +1795,7 @@ def all_cluster_details(request):
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 # groups the common credentials according to the access key
                 error, response = get_grouped_credential_list(response)
@@ -1835,7 +1841,7 @@ def all_cluster_details(request):
 
 
 @api_view(['POST'])
-def all_cluster_config_details(request):
+def alibaba_all_cluster_config_details(request):
     """
     get the details of clusters config in all providers
     :param request:
@@ -1859,7 +1865,7 @@ def all_cluster_config_details(request):
         else:
             user_id = json_request.get('user_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 # groups the common credentials according to the access key
                 error, response = get_grouped_credential_list(response)
@@ -1904,7 +1910,7 @@ def all_cluster_config_details(request):
 
 
 @api_view(['POST'])
-def create_kubernetes_cluster(request):
+def alibaba_create_kubernetes_cluster(request):
     """
     Create the kubernetes cluster on the alibaba cloud
     :param request:
@@ -1928,7 +1934,7 @@ def create_kubernetes_cluster(request):
             request_body = json_request.get('request_body')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
-                user_id)
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error_get_access_key_secret_key_list:
                 error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
                     provider_id, response_get_access_key_secret_key_list)
@@ -1981,7 +1987,7 @@ def create_kubernetes_cluster(request):
 
 
 @api_view(['DELETE'])
-def delete_kubernetes_cluster(request):
+def alibaba_delete_kubernetes_cluster(request):
     """
     Delete the kubernetes cluster on the alibaba cloud
     :param request:
@@ -2005,7 +2011,7 @@ def delete_kubernetes_cluster(request):
             provider_id = json_request.get('provider_id')
             cluster_id = json_request.get('cluster_id')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2088,7 +2094,7 @@ def alibaba_delete_pod(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2153,7 +2159,7 @@ def alibaba_delete_persistent_volume_claim(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2218,7 +2224,7 @@ def alibaba_delete_cron_job(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2283,7 +2289,7 @@ def alibaba_delete_daemon_set(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2348,7 +2354,7 @@ def alibaba_delete_deployment(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2413,7 +2419,7 @@ def alibaba_delete_job(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2478,7 +2484,7 @@ def alibaba_delete_replica_set(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2543,7 +2549,7 @@ def alibaba_delete_replication_controller(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2608,7 +2614,7 @@ def alibaba_delete_stateful_set(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2673,7 +2679,7 @@ def alibaba_delete_service(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2738,7 +2744,7 @@ def alibaba_delete_config_map(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2803,7 +2809,7 @@ def alibaba_delete_secret(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2868,7 +2874,7 @@ def alibaba_delete_ingress(request):
             name = json_request.get('name')
             namespace = json_request.get('namespace')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2932,7 +2938,7 @@ def alibaba_delete_persistent_volume(request):
             cluster_id = json_request.get('cluster_id')
             name = json_request.get('name')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -2996,7 +3002,7 @@ def alibaba_delete_storage_class(request):
             cluster_id = json_request.get('cluster_id')
             name = json_request.get('name')
             # Fetching access keys and secret keys from db
-            error, response = get_access_key_secret_key_list(user_id)
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.ALIBABA_CLOUD)
             if not error:
                 error, response = check_for_provider_id(provider_id, response)
                 if not error:
@@ -3026,6 +3032,78 @@ def alibaba_delete_storage_class(request):
             else:
                 # If user_id is incorrect or no user is found is database
                 raise Exception(response)
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def azure_all_cluster_details(request):
+    """
+    This method will list all the kubernetes services running for that particular user_id
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'all_cluster_details': [],
+                    'error': None}
+    all_provider_cluster_details = []
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id']
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+
+        else:
+            user_id = json_request.get('user_id')
+            # Fetching access keys and secret keys from db
+            error, response = get_access_key_secret_key_list(user_id, miscellaneous_operation.AZURE_CLOUD)
+            if not error:
+                # groups the common credentials according to the access key
+                error, response = get_grouped_credential_list(response)
+                if not error:
+
+                    for credential in response:
+                        providers_cluster_info = {}
+                        azure_cs = Azure_CS(
+                            azure_subscription_id=credential.get('subscription_id'),
+                            azure_client_id=credential.get('access_key'),
+                            azure_client_secret=credential.get('secret_key'),
+                            azure_tenant_id=credential.get('tenant_id')
+                        )
+
+                        error, result = azure_cs.describe_all_clusters()
+
+                        if not error:
+                            # access_key_secret_key['name']: cluster_details_list
+                            providers_cluster_info.update({
+                                'provider_names': credential.get('provider_name_list'),
+                                'clusters': result})
+                        else:
+                            # skip if any error occurred for a particular key
+                            providers_cluster_info.update({
+                                'provider_names': credential.get('provider_name_list'),
+                                'clusters': [],
+                                'error': result})
+                        all_provider_cluster_details.append(providers_cluster_info)
+                    api_response.update({'all_cluster_details': all_provider_cluster_details})
+                else:
+                    api_response.update({'is_successful': False,
+                                         'error': response})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': response})
+
+
     except Exception as e:
         api_response.update({
             'error': e.message,

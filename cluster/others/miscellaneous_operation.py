@@ -6,10 +6,19 @@ import requests
 from cryptography.fernet import Fernet
 from django.db import connection
 
-from clusterProvisioningClient.settings import BASE_DIR, decrypt_credentials_api_endpoint, SECRET_KEY, ENCRYPTION_KEY
+from clusterProvisioningClient.settings import BASE_DIR, decrypt_credentials_api_endpoint, ENCRYPTION_KEY
 
 config_dumps_path = os.path.join(BASE_DIR, 'config_dumps')
-def get_access_key_secret_key_list(user_id=None):
+
+AZURE_CLOUD = 'azure'
+ALIBABA_CLOUD = 'alibaba'
+OTC_CLOUD = 'otc'
+AWS_CLOUD = 'ec2'
+GCP_CLOUD = 'gce'
+OPNESTACK_CLOUD = 'openstack'
+
+
+def get_access_key_secret_key_list(user_id, cloud_type):
     """
     retrieve the list of access keys and secrete keys from db
     :param user_id:
@@ -21,7 +30,7 @@ def get_access_key_secret_key_list(user_id=None):
     try:
         # create cursor for calling stored procedure
         cursor = connection.cursor()
-        cmd = "SELECT public._cb_cp_sp_access_key_secret_key('%s')" % user_id
+        cmd = "SELECT public._cb_cp_sp_access_key_secret_key_test('%s','%s')" % (user_id, cloud_type)
         cursor.execute(cmd)
         rows = cursor.fetchall()
         result = rows[0][0]
@@ -360,17 +369,23 @@ def get_grouped_credential_list(credentials):
             provider_name_list = []
             credential_json = {}
             secret_key = None
+            subscription_id = None
+            tenant_id = None
             for element in credentials:
                 if element.get('client_id') == access_key:
                     provider_name_list.append({
                         'name': element.get('name'),
                         'id': element.get('id')
                     })
+                    subscription_id = element.get('subscription_id')
+                    tenant_id = element.get('tenant_id')
                     secret_key = element.get('client_secret')
             credential_json.update({
                 'provider_name_list': provider_name_list,
                 'access_key': access_key,
-                'secret_key': secret_key
+                'secret_key': secret_key,
+                'tenant_id': tenant_id,
+                'subscription_id': subscription_id
             })
             credential_list.append(credential_json)
         response = credential_list
