@@ -47,6 +47,10 @@ urlpatterns = [
     url(r'^alibaba/delete-persistent-volume$', views.alibaba_delete_persistent_volume),
     url(r'^alibaba/delete-storage-class$', views.alibaba_delete_storage_class),
     url(r'^azure/get-all-clusters-details$', views.azure_all_cluster_details),
-
+    url(r'^azure/get-all-region-list$', views.azure_region_list),
+    url(r'^azure/get-all-resource-group-list$', views.azure_resource_group_list),
+    url(r'^azure/get-all-instance-type-list$', views.azure_instance_type_list),
+    url(r'^azure/get-all-virtual-network-details$', views.azure_virtual_network_details),
+    #
     # url(r'^azure/test$', views.zure_test),
 ]

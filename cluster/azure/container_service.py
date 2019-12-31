@@ -3,7 +3,6 @@ from azure.mgmt.containerservice.v2019_11_01 import ContainerServiceClient
 import json
 import subprocess
 
-
 class Azure_CS:
     def __init__(self, azure_subscription_id, azure_client_id, azure_client_secret, azure_tenant_id):
         """
@@ -76,72 +75,76 @@ class Azure_CS:
 
         try:
 
-            if cluster.id:
+            if hasattr(cluster, 'id1'):
                 item['id'] = cluster.id
-            if cluster.location:
+            if hasattr(cluster, 'location'):
                 item['location'] = cluster.location
-            if cluster.name:
+            if hasattr(cluster, 'name'):
                 item['name'] = cluster.name
-            if cluster.type:
+            if hasattr(cluster, 'type'):
                 item['type'] = cluster.type
-            if cluster.tags:
+            if hasattr(cluster, 'tags'):
                 item['tags'] = cluster.tags
-            if cluster.enable_rbac:
+            if hasattr(cluster, 'enable_rbac'):
                 item['properties']['enableRBAC'] = cluster.enable_rbac
-            if cluster.provisioning_state:
+            if hasattr(cluster, 'provisioning_state'):
                 item['properties']['provisioningState'] = cluster.provisioning_state
-            if cluster.kubernetes_version:
+            if hasattr(cluster, 'kubernetes_version'):
                 item['properties']['kubernetesVersion'] = cluster.kubernetes_version
-            if cluster.max_agent_pools:
+            if hasattr(cluster, 'max_agent_pools'):
                 item['properties']['maxAgentPools'] = cluster.max_agent_pools
-            if cluster.dns_prefix:
+            if hasattr(cluster, 'dns_prefix'):
                 item['properties']['dnsPrefix'] = cluster.dns_prefix
-            if cluster.fqdn:
+            if hasattr(cluster, 'fqdn'):
                 item['properties']['fqdn'] = cluster.fqdn
-            if cluster.agent_pool_profiles:
-                 if cluster.agent_pool_profiles != None:
-                        for agent_profile in cluster.agent_pool_profiles:
-                            agentpool = {}
-                            if agent_profile.name:
-                                agentpool['name'] = agent_profile.name
-                            if agent_profile.count:
-                                agentpool['count'] = agent_profile.count
-                            if agent_profile.vm_size:
-                                agentpool['vmSize'] = agent_profile.vm_size
-                            if agent_profile.max_pods:
-                                agentpool['maxPods'] = agent_profile.max_pods
-                            if agent_profile.os_type:
-                                agentpool['osType'] = agent_profile.os_type
-                            if agent_profile.provisioning_state:
-                                agentpool['provisioningState'] = agent_profile.provisioning_state
-                            if agent_profile.orchestrator_version:
-                                agentpool['orchestratorVersion'] = agent_profile.orchestrator_version
-                            item['properties']['agentPoolProfiles'].append(agentpool)
-            if cluster.network_profile!= None:
-                if cluster.network_profile.network_plugin:
-                    item['properties']['networkProfile']['networkPlugin'] = cluster.network_profile.network_plugin
-                if cluster.network_profile.pod_cidr:
-                    item['properties']['networkProfile']['podCidr'] = cluster.network_profile.pod_cidr
-                if cluster.network_profile.service_cidr:
-                    item['properties']['networkProfile']['serviceCidr'] = cluster.network_profile.service_cidr
-                if cluster.network_profile.dns_service_ip:
-                    item['properties']['networkProfile']['dnsServiceIP'] = cluster.network_profile.dns_service_ip
-                if cluster.network_profile.docker_bridge_cidr:
-                    item['properties']['networkProfile']['dockerBridgeCidr'] = cluster.network_profile.docker_bridge_cidr
+            if hasattr(cluster, 'agent_pool_profiles'):
+                if cluster.agent_pool_profiles != None:
+                    for agent_profile in cluster.agent_pool_profiles:
+                        agentpool = {}
+                        if hasattr(agent_profile, 'name'):
+                            agentpool['name'] = agent_profile.name
+                        if hasattr(agent_profile, 'count'):
+                            agentpool['count'] = agent_profile.count
+                        if hasattr(agent_profile, 'vm_size'):
+                            agentpool['vmSize'] = agent_profile.vm_size
+                        if hasattr(agent_profile, 'max_pods'):
+                            agentpool['maxPods'] = agent_profile.max_pods
+                        if hasattr(agent_profile, 'os_type'):
+                            agentpool['osType'] = agent_profile.os_type
+                        if hasattr(agent_profile, 'provisioning_state'):
+                            agentpool['provisioningState'] = agent_profile.provisioning_state
+                        if hasattr(agent_profile, 'orchestrator_version'):
+                            agentpool['orchestratorVersion'] = agent_profile.orchestrator_version
+                        item['properties']['agentPoolProfiles'].append(agentpool)
+            if hasattr(cluster, 'network_profile'):
+                if cluster.network_profile != None:
+                    if hasattr(cluster.network_profile, 'network_plugin'):
+                        item['properties']['networkProfile']['networkPlugin'] = cluster.network_profile.network_plugin
+                    if hasattr(cluster.network_profile, 'pod_cidr'):
+                        item['properties']['networkProfile']['podCidr'] = cluster.network_profile.pod_cidr
+                    if hasattr(cluster.network_profile, 'service_cidr'):
+                        item['properties']['networkProfile']['serviceCidr'] = cluster.network_profile.service_cidr
+                    if hasattr(cluster.network_profile, 'dns_service_ip'):
+                        item['properties']['networkProfile']['dnsServiceIP'] = cluster.network_profile.dns_service_ip
+                    if hasattr(cluster.network_profile, 'docker_bridge_cidr'):
+                        item['properties']['networkProfile'][
+                            'dockerBridgeCidr'] = cluster.network_profile.docker_bridge_cidr
 
-            if cluster.node_resource_group:
+            if hasattr(cluster, 'node_resource_group'):
                 item['properties']['nodeResourceGroup'] = cluster.node_resource_group
 
-            if cluster.linux_profile:
-                if cluster.linux_profile!= None:
-                    if cluster.linux_profile.admin_username:
+            if hasattr(cluster, 'linux_profile'):
+                if cluster.linux_profile != None:
+                    if hasattr(cluster.linux_profile, 'admin_username'):
                         item['properties']['linuxProfile']['adminUsername'] = cluster.linux_profile.admin_username
-                    if cluster.linux_profile.ssh != None:
-                        if cluster.linux_profile.ssh.public_keys != None:
-                            for publickey in cluster.linux_profile.ssh.public_keys:
-                                ssh_key = {}
-                                ssh_key['keyData'] = publickey.key_data
-                                item['properties']['linuxProfile']['ssh']['publicKeys'].append(ssh_key)
+                    if hasattr(cluster.linux_profile, 'ssh'):
+                        if cluster.linux_profile.ssh != None:
+                            if hasattr(cluster.linux_profile.ssh, 'public_keys'):
+                                if cluster.linux_profile.ssh.public_keys != None:
+                                    for publickey in cluster.linux_profile.ssh.public_keys:
+                                        ssh_key = {}
+                                        ssh_key['keyData'] = publickey.key_data
+                                        item['properties']['linuxProfile']['ssh']['publicKeys'].append(ssh_key)
 
             response = item
         except Exception as e:
@@ -158,7 +161,7 @@ class Azure_CS:
         error = False
         response = None
         try:
-            subscription_id = self.azure_subscription_id  # your Azure Subscription Id
+            subscription_id = self.azure_subscription_id
 
             credentials = ServicePrincipalCredentials(
                 client_id=self.azure_client_id,
@@ -171,12 +174,10 @@ class Azure_CS:
                 error_cluster_object_to_dict, response_cluster_object_to_dict = self.cluster_object_to_dict(
                     cluster)
                 if error_cluster_object_to_dict:
-                    error = True
-                    response = response_cluster_object_to_dict
+                    raise Exception(response_cluster_object_to_dict)
                 else:
                     cluster_list.append(response_cluster_object_to_dict)
-                    response = cluster_list
-
+            response = cluster_list
 
         except Exception as e:
             error = True
@@ -184,31 +185,34 @@ class Azure_CS:
         finally:
             return error, response
 
-    def azure_test(request):
 
-        json_request = json.loads(request.body)
 
-        username = json_request['username']
-        password = json_request['password']
-        resource_group = json_request['resource_group']
-        resource_name = json_request['resource_name']
-        file_path = json_request['file_path']
 
-        az_login = subprocess.Popen(
-            ['az', 'login', '-u', '%s' % (username), '-p', '%s' % (password)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = az_login.communicate()
-
-        print output
-        print error
-
-        # az aks get - credentials - -resource - group test - resource - group - k8s - -name test1 - -file C:\D_drive\Tathagat\kubeConfig_azure1\config
-
-        az_ = subprocess.Popen(
-            ['az', 'aks', 'get', '--credentials', '--resource-group', '%s' % (resource_group), '--name',
-             '%s' % (resource_name), '--file' '%s' % (file_path)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output1, error1 = az_login.communicate()
-
-        print output1
-        print error1
+    # def azure_test(request):
+    #
+    #     json_request = json.loads(request.body)
+    #
+    #     username = json_request['username']
+    #     password = json_request['password']
+    #     resource_group = json_request['resource_group']
+    #     resource_name = json_request['resource_name']
+    #     file_path = json_request['file_path']
+    #
+    #     az_login = subprocess.Popen(
+    #         ['az', 'login', '-u', '%s' % (username), '-p', '%s' % (password)],
+    #         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #     output, error = az_login.communicate()
+    #
+    #     print output
+    #     print error
+    #
+    #     # az aks get - credentials - -resource - group test - resource - group - k8s - -name test1 - -file C:\D_drive\Tathagat\kubeConfig_azure1\config
+    #
+    #     az_ = subprocess.Popen(
+    #         ['az', 'aks', 'get', '--credentials', '--resource-group', '%s' % (resource_group), '--name',
+    #          '%s' % (resource_name), '--file' '%s' % (file_path)],
+    #         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #     output1, error1 = az_login.communicate()
+    #
+    #     print output1
+    #     print error1

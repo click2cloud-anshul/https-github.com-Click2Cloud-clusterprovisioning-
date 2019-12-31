@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view
 from cluster.alibaba.compute_service import Alibaba_ECS
 from cluster.alibaba.container_service import Alibaba_CS
 from cluster.azure.container_service import Azure_CS
+from cluster.azure.compute_service import Azure_Compute_Service
 from cluster.others import miscellaneous_operation
 from cluster.others.miscellaneous_operation import key_validations_cluster_provisioning, get_access_key_secret_key_list, \
     get_grouped_credential_list, check_for_provider_id, insert_or_update_cluster_details
@@ -3103,6 +3104,304 @@ def azure_all_cluster_details(request):
                 api_response.update({'is_successful': False,
                                      'error': response})
 
+
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def azure_region_list(request):
+    """
+    get the list of the available regions
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'region_list': [],
+                    'error': None}
+    providerId_access_flag = True
+    valid_json_keys = ['user_id',
+                       'provider_id']
+    try:
+        json_request = json.loads(request.body)
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            # Fetching access keys and secret keys from db
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id,
+                                                                               miscellaneous_operation.AZURE_CLOUD)
+            if not error:
+                unique_access_key_list = []
+                if len(list(access_key_secret_key_list)) > 0:
+                    # creating unique list of access key
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key.get('client_id'))
+                for access_key in unique_access_key_list:
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') == access_key and access_key_secret_key.get(
+                                'id') == int(provider_id):
+                            providerId_access_flag = False
+                            azure_Compute_Service = Azure_Compute_Service(
+                                azure_subscription_id=access_key_secret_key.get('subscription_id'),
+                                azure_client_id=access_key_secret_key.get('client_id'),
+                                azure_client_secret=access_key_secret_key.get('client_secret'),
+                                azure_tenant_id=access_key_secret_key.get('tenant_id'))
+
+                            flag, region_list = azure_Compute_Service.list_regions()
+
+                            if flag:
+                                api_response.update({'is_successful': flag,
+                                                     'error': 'Error occured while fetching the resource group list'})
+                                break
+                            else:
+                                api_response.update({'is_successful': flag,
+                                                     'region_list': region_list,
+                                                     'error': None})
+                if providerId_access_flag:
+                    api_response.update({'is_successful': False,
+                                         'error': 'Invalid provider_id or no data available.'})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': 'Invalid user_id or no data available.'})
+
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def azure_resource_group_list(request):
+    """
+    get the list of the available resource group
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'resource_group_list': [],
+                    'error': None}
+    providerId_access_flag = True
+    valid_json_keys = ['user_id',
+                       'provider_id']
+    try:
+        json_request = json.loads(request.body)
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            # Fetching access keys and secret keys from db
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id,
+                                                                               miscellaneous_operation.AZURE_CLOUD)
+            if not error:
+                unique_access_key_list = []
+                if len(list(access_key_secret_key_list)) > 0:
+                    # creating unique list of access key
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key.get('client_id'))
+                for access_key in unique_access_key_list:
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') == access_key and access_key_secret_key.get(
+                                'id') == int(provider_id):
+                            providerId_access_flag = False
+                            azure_Compute_Service = Azure_Compute_Service(
+                                azure_subscription_id=access_key_secret_key.get('subscription_id'),
+                                azure_client_id=access_key_secret_key.get('client_id'),
+                                azure_client_secret=access_key_secret_key.get('client_secret'),
+                                azure_tenant_id=access_key_secret_key.get('tenant_id'))
+
+                            flag, resource_group_list = azure_Compute_Service.resource_group_list()
+
+                            if flag:
+                                api_response.update({'is_successful': flag,
+                                                     'error': 'Error occured while fetching the region list'})
+                                break
+                            else:
+                                api_response.update({'is_successful': flag,
+                                                     'resource_group_list': resource_group_list,
+                                                     'error': None})
+
+                if providerId_access_flag:
+                    api_response.update({'is_successful': False,
+                                         'error': 'Invalid provider_id or no data available.'})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': 'Invalid user_id or no data available.'})
+
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def azure_instance_type_list(request):
+    """
+    get the list of the available instance type
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'instance_type_list': [],
+                    'error': None}
+    providerId_access_flag = True
+    valid_json_keys = ['user_id',
+                       'provider_id',
+                       'region_id']
+    try:
+        json_request = json.loads(request.body)
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            # Fetching access keys and secret keys from db
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id,
+                                                                               miscellaneous_operation.AZURE_CLOUD)
+            if not error:
+                unique_access_key_list = []
+                if len(list(access_key_secret_key_list)) > 0:
+                    # creating unique list of access key
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key.get('client_id'))
+                for access_key in unique_access_key_list:
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') == access_key and access_key_secret_key.get(
+                                'id') == int(provider_id):
+                            providerId_access_flag = False
+                            azure_Compute_Service = Azure_Compute_Service(
+                                azure_subscription_id=access_key_secret_key.get('subscription_id'),
+                                azure_client_id=access_key_secret_key.get('client_id'),
+                                azure_client_secret=access_key_secret_key.get('client_secret'),
+                                azure_tenant_id=access_key_secret_key.get('tenant_id'))
+
+                            flag, instance_type_list = azure_Compute_Service.instance_type(location=json_request.get('region_id'))
+
+                            if flag:
+                                api_response.update({'is_successful': flag,
+                                                     'error': 'Error occured while fetching the instance type list'})
+                                break
+                            else:
+                                api_response.update({'is_successful': flag,
+                                                     'instance_type_list': instance_type_list,
+                                                     'error': None})
+                if providerId_access_flag:
+                    api_response.update({'is_successful': False,
+                                         'error': 'Invalid provider_id or no data available.'})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': 'Invalid user_id or no data available.'})
+
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+@api_view(['POST'])
+def azure_virtual_network_details(request):
+    """
+    get the list of the available virtual network
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'virtual_network_details': [],
+                    'error': None}
+    providerId_access_flag = True
+    valid_json_keys = ['user_id',
+                       'provider_id',
+                       'region_id']
+    try:
+        json_request = json.loads(request.body)
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            # Fetching access keys and secret keys from db
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id,
+                                                                               miscellaneous_operation.AZURE_CLOUD)
+            if not error:
+                unique_access_key_list = []
+                if len(list(access_key_secret_key_list)) > 0:
+                    # creating unique list of access key
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key.get('client_id'))
+                for access_key in unique_access_key_list:
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') == access_key and access_key_secret_key.get(
+                                'id') == int(provider_id):
+                            providerId_access_flag = False
+                            azure_Compute_Service = Azure_Compute_Service(
+                                azure_subscription_id=access_key_secret_key.get('subscription_id'),
+                                azure_client_id=access_key_secret_key.get('client_id'),
+                                azure_client_secret=access_key_secret_key.get('client_secret'),
+                                azure_tenant_id=access_key_secret_key.get('tenant_id'))
+
+                            flag, virtual_network_details = azure_Compute_Service.virtual_network(location=json_request.get('region_id'))
+
+                            if flag:
+                                api_response.update({'is_successful': flag,
+                                                     'error': 'Error occured while fetching the virtual network details'})
+                                break
+                            else:
+                                api_response.update({'is_successful': flag,
+                                                     'virtual_network_details': virtual_network_details,
+                                                     'error': None})
+                if providerId_access_flag:
+                    api_response.update({'is_successful': False,
+                                         'error': 'Invalid provider_id or no data available.'})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': 'Invalid user_id or no data available.'})
 
     except Exception as e:
         api_response.update({
