@@ -11,9 +11,9 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
 import os
-
 # Load environment variables for dynamic configuration loading from .env file at the same path
 from os.path import join, dirname
+
 from dotenv import load_dotenv
 
 dotenv_path = join(dirname(__file__), '.env')

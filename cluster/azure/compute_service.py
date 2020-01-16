@@ -1,8 +1,8 @@
-from azure.mgmt.subscription import SubscriptionClient
 from azure.common.credentials import ServicePrincipalCredentials
-from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.compute.v2019_03_01 import ComputeManagementClient
 from azure.mgmt.network._network_management_client import NetworkManagementClient
+from azure.mgmt.resource import ResourceManagementClient
+from azure.mgmt.subscription import SubscriptionClient
 
 
 def vm_size_object_to_dict(vm_size):

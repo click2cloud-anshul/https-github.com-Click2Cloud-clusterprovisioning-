@@ -3030,3 +3030,72 @@ class Alibaba_CS:
             response = e.message
         finally:
             return error, response
+
+    def get_all_resources_list(self, cluster_id):
+        """
+        Get the detail of all the config map of all the clusters in alibaba console
+        :return:
+        """
+        cluster_details_list = []
+        error = False
+        response = []
+        cluster_access_flag = False
+        try:
+            error, response_describe_all_clusters = self.describe_all_clusters()
+            if not error:
+                if len(response_describe_all_clusters) == 0:
+                    response = []
+                else:
+                    for cluster in response_describe_all_clusters:
+                        if cluster_id is cluster.get('cluster_id'):
+                            cluster_access_flag = True
+                            cluster_details = {'resources': {},
+                                               'cluster_name': cluster.get('name'),
+                                               'error': None}
+                            error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                                cluster)
+                            if not error_check_database_state_and_update:
+                                if 'parameters' in cluster and cluster.get('parameters') is not None:
+                                    if 'running' in cluster.get(
+                                            'state'):
+                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                            cluster_id)
+                                        if not error_describe_cluster_config_token_endpoint:
+                                            # Adding unique labels for the cluster_roles in a single cluster
+                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                            error_get_all_resources, response_get_all_resources = k8s_obj.get_all_resources(
+                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_public_endpoint'),
+                                                token=response_describe_cluster_config_token_endpoint.get(
+                                                    'cluster_token'))
+                                            if not error_get_all_resources:
+                                                cluster_details.update({
+                                                    'resources': response_get_all_resources
+                                                })
+                                            else:
+                                                cluster_details.update({'error': response_get_all_resources})
+                                        else:
+                                            cluster_details.update(
+                                                {'error': response_describe_cluster_config_token_endpoint})
+                                    else:
+                                        # If cluster is not in running state
+                                        cluster_details.update({'error': 'Cluster is not in running state'})
+                                else:
+                                    cluster_details.update({
+                                        'error':
+                                            'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                                    })
+                            else:
+                                raise Exception(response_check_database_state_and_update)
+                            cluster_details_list.append(cluster_details)
+                    if not cluster_access_flag:
+                        raise Exception('Please provide valid cluster_id')
+                    response = cluster_details_list
+            else:
+                raise Exception(response_describe_all_clusters)
+
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response

@@ -1,7 +1,6 @@
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.containerservice.v2019_11_01 import ContainerServiceClient
-import json
-import subprocess
+
 
 class Azure_CS:
     def __init__(self, azure_subscription_id, azure_client_id, azure_client_secret, azure_tenant_id):

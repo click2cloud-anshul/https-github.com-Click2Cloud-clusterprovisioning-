@@ -51,6 +51,7 @@ urlpatterns = [
     url(r'^azure/get-all-resource-group-list$', views.azure_resource_group_list),
     url(r'^azure/get-all-instance-type-list$', views.azure_instance_type_list),
     url(r'^azure/get-all-virtual-network-details$', views.azure_virtual_network_details),
+    url(r'^alibaba/get-all-resources$', views.alibaba_all_resources),
     #
     # url(r'^azure/test$', views.zure_test),
 ]

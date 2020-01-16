@@ -1,16 +1,15 @@
-import after_response
-import json
-import docker
-import subprocess
-import time
 import ast
+import json
+import subprocess
 
+import after_response
+import docker
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
-from django.db import connection
-from cluster.others.miscellaneous_operation import key_validations_cluster_provisioning
+
 from cluster.others.miscellaneous_operation import insert_or_update_s2i_details, get_s2i_details, \
     delete_s2i_image_detail_from_db
+from cluster.others.miscellaneous_operation import key_validations_cluster_provisioning
 
 
 @api_view(['POST'])

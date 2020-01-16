@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import uuid
 from collections import defaultdict
 from os import path
@@ -9,8 +10,6 @@ import yaml
 from kubernetes import client, utils
 from kubernetes.client import Configuration
 from kubernetes.config import kube_config
-import os
-
 from kubernetes.utils import FailToCreateError
 from pint import UnitRegistry
 from yaml.scanner import ScannerError
@@ -944,6 +943,137 @@ class Kubernetes_Operations(object):
                 node_list.append(node_info)
 
             response = node_list
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_all_resources(self, cluster_url=None, token=None):
+        """
+        it retrives the information for services
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        resources = {
+            'namespaces': 0,
+            'pods': 0,
+            'deployments': 0,
+            'services': 0,
+            'secrets': 0,
+            'nodes': 0,
+            'jobs': 0,
+            'cron_jobs': 0,
+            'config_maps': 0,
+            'persistent_volume_claims': 0,
+            'daemon_sets': 0,
+            'ingress': 0,
+            'persistent_volumes': 0,
+            'replica_sets': 0,
+            'replication_controller': 0,
+            'roles': 0,
+            'stateful_sets': 0,
+            'cluster_roles': 0
+        }
+        try:
+            error_get_namespaces, response_get_namespaces = self.get_namespaces(cluster_url=cluster_url, token=token)
+            if error_get_namespaces:
+                raise Exception(response_get_namespaces)
+
+            error_get_pods, response_get_pods = self.get_pods(cluster_url=cluster_url, token=token)
+            if error_get_pods:
+                raise Exception(response_get_pods)
+
+            error_get_deployments, response_get_deployments = self.get_deployments(cluster_url=cluster_url, token=token)
+            if error_get_deployments:
+                raise Exception(response_get_deployments)
+
+            error_get_services, response_get_services = self.get_services(cluster_url=cluster_url, token=token)
+            if error_get_services:
+                raise Exception(response_get_services)
+
+            error_get_secrets, response_get_secrets = self.get_secrets(cluster_url=cluster_url, token=token)
+            if error_get_secrets:
+                raise Exception(response_get_secrets)
+
+            error_get_nodes, response_get_nodes = self.get_nodes(cluster_url=cluster_url, token=token)
+            if error_get_nodes:
+                raise Exception(response_get_nodes)
+
+            error_get_jobs, response_get_jobs = self.get_jobs(cluster_url=cluster_url, token=token)
+            if error_get_jobs:
+                raise Exception(response_get_jobs)
+
+            error_get_cron_jobs, response_get_cron_jobs = self.get_cron_jobs(cluster_url=cluster_url, token=token)
+            if error_get_cron_jobs:
+                raise Exception(response_get_cron_jobs)
+
+            error_get_config_maps, response_get_config_maps = self.get_config_maps(cluster_url=cluster_url, token=token)
+            if error_get_config_maps:
+                raise Exception(response_get_config_maps)
+
+            error_get_persistent_volume_claims, response_get_persistent_volume_claims = self.get_persistent_volume_claims(
+                cluster_url=cluster_url, token=token)
+            if error_get_persistent_volume_claims:
+                raise Exception(response_get_persistent_volume_claims)
+
+            error_get_daemon_sets, response_get_daemon_sets = self.get_daemon_sets(cluster_url=cluster_url, token=token)
+            if error_get_daemon_sets:
+                raise Exception(response_get_daemon_sets)
+
+            error_get_ingresses, response_get_ingresses = self.get_ingresses(cluster_url=cluster_url, token=token)
+            if error_get_ingresses:
+                raise Exception(response_get_ingresses)
+
+            error_get_persistent_volumes, response_get_persistent_volumes = self.get_persistent_volumes(
+                cluster_url=cluster_url, token=token)
+            if error_get_persistent_volumes:
+                raise Exception(response_get_persistent_volumes)
+
+            error_get_replica_sets, response_get_replica_sets = self.get_replica_sets(cluster_url=cluster_url,
+                                                                                      token=token)
+            if error_get_replica_sets:
+                raise Exception(response_get_replica_sets)
+
+            error_get_roles, response_get_roles = self.get_roles(cluster_url=cluster_url, token=token)
+            if error_get_roles:
+                raise Exception(response_get_roles)
+
+            error_get_stateful_sets, response_get_stateful_sets = self.get_stateful_sets(cluster_url=cluster_url,
+                                                                                         token=token)
+            if error_get_stateful_sets:
+                raise Exception(response_get_stateful_sets)
+
+            error_get_replication_controllers, response_get_replication_controllers = self.get_replication_controllers(
+                cluster_url=cluster_url, token=token)
+            if error_get_replication_controllers:
+                raise Exception(response_get_replication_controllers)
+
+            resources.update({
+                'namespaces': len(response_get_namespaces.get('items')),
+                'pods': len(response_get_pods.get('items')),
+                'deployments': len(response_get_deployments.get('items')),
+                'services': len(response_get_services.get('items')),
+                'secrets': len(response_get_secrets.get('items')),
+                'nodes': len(response_get_nodes.get('items')),
+                'jobs': len(response_get_jobs.get('items')),
+                'cron_jobs': len(response_get_cron_jobs.get('items')),
+                'config_maps': len(response_get_config_maps.get('items')),
+                'persistent_volume_claims': len(response_get_persistent_volume_claims.get('items')),
+                'daemon_sets': len(response_get_daemon_sets.get('items')),
+                'ingress': len(response_get_ingresses.get('items')),
+                'persistent_volumes': len(response_get_persistent_volumes.get('items')),
+                'replica_sets': len(response_get_replica_sets.get('items')),
+                'replication_controller': len(response_get_replication_controllers.get('items')),
+                'roles': len(response_get_roles.get('role_list').get('items')),
+                'stateful_sets': len(response_get_stateful_sets.get('items')),
+                'cluster_roles': len(response_get_roles.get('cluster_role_list').get('items'))
+            })
+            response = resources
+
         except Exception as e:
             error = True
             response = e.message
