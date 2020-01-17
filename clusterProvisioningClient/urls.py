@@ -16,7 +16,7 @@ Including another URLconf
 from django.conf.urls import url, include
 from django.contrib import admin
 
-from cluster.others.miscellaneous_operation import run_postgresql_script
+from cluster.others.miscellaneous_operation import run_postgres_sql_script
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
@@ -26,4 +26,4 @@ urlpatterns = [
 
 ]
 
-run_postgresql_script()
+run_postgres_sql_script()

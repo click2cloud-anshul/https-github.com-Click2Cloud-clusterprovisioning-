@@ -2,6 +2,8 @@
 from __future__ import unicode_literals
 
 # Create your tests here.
+import base64
+
 from cluster.kuberenetes.operations import Kubernetes_Operations
 
 
@@ -30,3 +32,13 @@ def all_deployments():
     flag, result = k8s_obj.get_deployments(cluster_url='<kubernetes_cluster_endpoint>',
                                            token=token)
     print result
+
+
+def test_to_encode_anddecode():
+    data = "text"
+    encodedStr = str(base64.b64encode(data.encode("utf-8")))
+    print encodedStr
+    decoded = base64.b64decode(encodedStr)
+    print decoded
+
+

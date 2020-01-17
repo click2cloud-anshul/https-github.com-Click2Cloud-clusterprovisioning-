@@ -1,12 +1,12 @@
+import base64
 import json
 import os
 import time
 
 import requests
-from cryptography.fernet import Fernet
 from django.db import connection
 
-from clusterProvisioningClient.settings import BASE_DIR, decrypt_credentials_api_endpoint, ENCRYPTION_KEY
+from clusterProvisioningClient.settings import BASE_DIR, decrypt_credentials_api_endpoint
 
 config_dumps_path = os.path.join(BASE_DIR, 'config_dumps')
 
@@ -15,12 +15,13 @@ ALIBABA_CLOUD = 'alibaba'
 OTC_CLOUD = 'otc'
 AWS_CLOUD = 'ec2'
 GCP_CLOUD = 'gce'
-OPNESTACK_CLOUD = 'openstack'
+OPENSTACK_CLOUD = 'openstack'
 
 
 def get_access_key_secret_key_list(user_id, cloud_type):
     """
     retrieve the list of access keys and secrete keys from db
+    :param cloud_type:
     :param user_id:
     :return:
     """
@@ -40,7 +41,7 @@ def get_access_key_secret_key_list(user_id, cloud_type):
             response = 'Invalid user_id or no data available.'
         elif len(result) > 0:
             headers = {'content-type': 'application/json'}
-            # Calling nodejs api for decrypting the alibaba encrypted access keys and secret keys
+            # Calling node js api for decrypting the alibaba encrypted access keys and secret keys
             result_api = requests.post(url=decrypt_credentials_api_endpoint, data=response, headers=headers)
             if result_api.status_code != 200:
                 raise Exception('Failed to decrypt the credentials.')
@@ -51,7 +52,7 @@ def get_access_key_secret_key_list(user_id, cloud_type):
                 error = True
                 response = result_api.get('error')
 
-    except Exception as ex:
+    except Exception:
         error = True
         response = 'Cannot connect to Database server'
     finally:
@@ -63,11 +64,10 @@ def get_access_key_secret_key_list(user_id, cloud_type):
 def key_validations_cluster_provisioning(request_keys=None, validation_keys=None):
     """
     validate the keys from request parameter
-    :param request_keys: keys receieved from request which need to validate
+    :param request_keys: keys received from request which need to validate
     :param validation_keys: referenced keys for validation
     :return:
     """
-    error = False
     response = {}
     missing_key_flag = False
     missing_value_flag = False
@@ -143,12 +143,11 @@ def insert_or_update_cluster_details(params=None):
     error = False
     response = None
     try:
-        fernet_object = Fernet(ENCRYPTION_KEY)
         cursor = connection.cursor()
         user_id = int(params.get('user_id'))
         provider_id = int(params.get('provider_id'))
         cluster_id = str(params.get('cluster_id'))
-        cluster_details = fernet_object.encrypt(str(params.get('cluster_details')))
+        cluster_details = str(base64.b64encode(params.get('cluster_details').encode("utf-8")))
         status = params.get('status')
         operation = params.get('operation')
         if params.get('is_insert'):
@@ -191,7 +190,8 @@ def insert_or_update_cluster_details(params=None):
 def insert_or_update_s2i_details(params=None, insert_unique_id=None):
     """
     insert or update the s2i details in the database
-    :param params,insert_unique_id:
+    :param params:
+    :param insert_unique_id:
     :return:
     """
     cursor = None
@@ -433,13 +433,12 @@ def insert_or_update_cluster_config_details(params=None):
     error = False
     response = None
     try:
-        fernet_object = Fernet(ENCRYPTION_KEY)
         cursor = connection.cursor()
         provider = str(params.get('provider'))
         cluster_id = str(params.get('cluster_id'))
         cluster_public_endpoint = str(params.get('cluster_public_endpoint'))
-        cluster_config = fernet_object.encrypt(str(params.get('cluster_config')))
-        cluster_token = fernet_object.encrypt(str(params.get('cluster_token')))
+        cluster_config = str(base64.b64encode(params.get('cluster_config').encode("utf-8")))
+        cluster_token = str(base64.b64encode(params.get('cluster_token').encode("utf-8")))
         if params.get('is_insert'):
             cmd = "INSERT INTO public._cb_cp_cluster_config_details(provider, cluster_id, cluster_public_endpoint, " \
                   "cluster_config, cluster_token) VALUES ('{provider}','{cluster_id}','{cluster_public_endpoint}','{cluster_config}'" \
@@ -482,11 +481,9 @@ def get_cluster_config_details(provider, cluster_id):
     """
     cursor = None
     error = False
-    result = None
     cluster_config_details = {}
     response = None
     try:
-        fernet_object = Fernet(ENCRYPTION_KEY)
         cursor = connection.cursor()
         sql_cmd = "SELECT cluster_public_endpoint, cluster_config, cluster_token FROM " \
                   "public._cb_cp_cluster_config_details where provider = " \
@@ -497,9 +494,9 @@ def get_cluster_config_details(provider, cluster_id):
         result = cursor.fetchall()
         if len(result) > 0:
             result = result[0]
-            cluster_config = fernet_object.decrypt(bytes(result[1]))
+            cluster_config = base64.b64decode(bytes(str(result[1])))
             cluster_token = str(result[2])
-            cluster_token = fernet_object.decrypt(cluster_token)
+            cluster_token = base64.b64decode(bytes(cluster_token))
             cluster_config_details.update({
                 'cluster_public_endpoint': result[0],
                 'cluster_config': cluster_config,
@@ -516,27 +513,27 @@ def get_cluster_config_details(provider, cluster_id):
         return error, response
 
 
-def run_postgresql_script():
+def run_postgres_sql_script():
     """
     Creates tables and stored procedures in postgres database if not exist
     """
     cursor = None
     try:
-        postgresql_cluster_provisioning_tables_file = os.path.join(BASE_DIR, 'dependency', 'database', 'tables.sql')
-        postgresql_cluster_provisioning_stored_procedures_file = os.path.join(BASE_DIR, 'dependency', 'database',
-                                                                              'stored_procedures.sql')
+        postgres_sql_cluster_provisioning_tables_file = os.path.join(BASE_DIR, 'dependency', 'database', 'tables.sql')
+        postgres_sql_cluster_provisioning_stored_procedures_file = os.path.join(BASE_DIR, 'dependency', 'database',
+                                                                                'stored_procedures.sql')
         print("Database script executing")
         # create cursor for calling stored procedure
         cursor = connection.cursor()
         # create cluster provisioning related tables if not exist
-        postgresql_cluster_provisioning_tables_file_string = open(str(postgresql_cluster_provisioning_tables_file),
-                                                                  "r").read()
-        cursor.execute(postgresql_cluster_provisioning_tables_file_string)
+        postgres_sql_cluster_provisioning_tables_file_string = open(str(postgres_sql_cluster_provisioning_tables_file),
+                                                                    "r").read()
+        cursor.execute(postgres_sql_cluster_provisioning_tables_file_string)
 
         # create cluster provisioning related functions
-        postgresql_cluster_provisioning_stored_procedures_file_string = open(
-            str(postgresql_cluster_provisioning_stored_procedures_file), "r").read()
-        cursor.execute(postgresql_cluster_provisioning_stored_procedures_file_string)
+        postgres_sql_cluster_provisioning_stored_procedures_file_string = open(
+            str(postgres_sql_cluster_provisioning_stored_procedures_file), "r").read()
+        cursor.execute(postgres_sql_cluster_provisioning_stored_procedures_file_string)
         connection.commit()
         print("Database script execution completed")
     except Exception as e:
