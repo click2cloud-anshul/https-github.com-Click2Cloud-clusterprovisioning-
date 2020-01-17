@@ -16,6 +16,8 @@ Including another URLconf
 from django.conf.urls import url, include
 from django.contrib import admin
 
+from cluster.others.miscellaneous_operation import run_postgresql_script
+
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^api/common/', include('common.urls')),
@@ -23,3 +25,5 @@ urlpatterns = [
     url(r'^cluster-provisioning/', include('source_to_image.urls'))
 
 ]
+
+run_postgresql_script()

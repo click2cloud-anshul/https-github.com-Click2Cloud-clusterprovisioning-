@@ -514,3 +514,33 @@ def get_cluster_config_details(provider, cluster_id):
         if cursor is not None:
             cursor.close()
         return error, response
+
+
+def run_postgresql_script():
+    """
+    Creates tables and stored procedures in postgres database if not exist
+    """
+    cursor = None
+    try:
+        postgresql_cluster_provisioning_tables_file = os.path.join(BASE_DIR, 'dependency', 'database', 'tables.sql')
+        postgresql_cluster_provisioning_stored_procedures_file = os.path.join(BASE_DIR, 'dependency', 'database',
+                                                                              'stored_procedures.sql')
+        print("Database script executing")
+        # create cursor for calling stored procedure
+        cursor = connection.cursor()
+        # create cluster provisioning related tables if not exist
+        postgresql_cluster_provisioning_tables_file_string = open(str(postgresql_cluster_provisioning_tables_file),
+                                                                  "r").read()
+        cursor.execute(postgresql_cluster_provisioning_tables_file_string)
+
+        # create cluster provisioning related functions
+        postgresql_cluster_provisioning_stored_procedures_file_string = open(
+            str(postgresql_cluster_provisioning_stored_procedures_file), "r").read()
+        cursor.execute(postgresql_cluster_provisioning_stored_procedures_file_string)
+        connection.commit()
+        print("Database script execution completed")
+    except Exception as e:
+        print(e)
+    finally:
+        if cursor is not None:
+            cursor.close()
