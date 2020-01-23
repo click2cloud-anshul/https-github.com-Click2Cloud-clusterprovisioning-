@@ -68,6 +68,63 @@ def create_new_image_using_s2i(request):
         return JsonResponse(api_response, safe=False)
 
 
+# @api_view(['POST'])
+# def create_application(request):
+#     """
+#     This method creates the new application using s2i and deploy on kubernetes
+#     :param request: parameters passed during the api call
+#     :return:
+#     """
+#
+#     api_response = {'is_successful': False,
+#                     'error': None}
+#     try:
+#         json_request = json.loads(request.body)
+#         valid_json_keys = ['user_id', 'provider_id', 'cluster_id', 'application_name', 'build_config',
+#                            'deployment_config']
+#         error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+#         if error:
+#             api_response.update({
+#                 'error': response.get('error')
+#             })
+#         else:
+#             # github_username = ''
+#             # github_password = ''
+#             # if 'github_username' in json_request and 'github_password' in json_request:
+#             #     github_username = json_request.get('github_username')
+#             #     github_password = json_request.get('github_password')
+#             #
+#             # rm_https_from_giturl = json_request.get('github_url').strip().lstrip('https://')
+#             # check_github_repo = subprocess.Popen(
+#             #     ['git', 'ls-remote', 'https://%s:%s@%s' % (github_username, github_password, rm_https_from_giturl)],
+#             #     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#             # output, error = check_github_repo.communicate()
+#             #
+#             # if error != '':
+#             #     split_error_string = error.split('\n')
+#             #     partition_error_string = split_error_string[0].partition('remote: ')[2]
+#             #     if partition_error_string == '':
+#             #         api_response.update({
+#             #             'error': 'github repository not found.'
+#             #         })
+#             #     else:
+#             #         api_response.update({
+#             #             'error': 'github %s' % (partition_error_string).lower()
+#             #         })
+#             # else:
+#
+#             create_new_application_operation.after_response(json_request)
+#             api_response.update({
+#                 'is_successful': True
+#             })
+#     except Exception as e:
+#         api_response.update({
+#             'error': e.message
+#         })
+#     finally:
+#         return JsonResponse(api_response, safe=False)
+#
+
 def delete_builder_image(docker_cli, builder_image):
     """
     This function will delete the builder image from docker
@@ -313,6 +370,19 @@ def after_response_create_image(json_request):
 
 @after_response.enable
 def create_new_image_operation(json_request):
+    """
+    create the new image using s2i in after response
+    :param json_request:
+    :return:
+    """
+    try:
+        after_response_create_image(json_request)
+    except Exception as e:
+        print e.message
+
+
+@after_response.enable
+def create_new_application_operation(json_request):
     """
     create the new image using s2i in after response
     :param json_request:

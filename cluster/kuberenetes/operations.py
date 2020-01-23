@@ -19,11 +19,11 @@ from clusterProvisioningClient.settings import BASE_DIR
 
 def create_file_for_app_deploy(cluster_id, data):
     """
-        create the yaml file using data for deploy app on kubernetes cluster with its id as a directory name
-        :param cluster_id:
-        :param data:
-        :return:
-        """
+    create the yaml file using data for deploy app on kubernetes cluster with its id as a directory name
+    :param cluster_id:
+    :param data:
+    :return:
+    """
     error = False
     response = None
     try:
@@ -64,6 +64,18 @@ class Kubernetes_Operations(object):
         return self._configuration_yaml
 
     @property
+    def client(self):
+        """
+        client of kubernetes
+        :return:
+        """
+        k8_loader = kube_config.KubeConfigLoader(self.config)
+        call_config = type.__call__(Configuration)
+        k8_loader.load_and_set(call_config)
+        Configuration.set_default(call_config)
+        return client
+
+    @property
     def clientCoreV1(self):
         """
         client core method of kubernetes
@@ -75,6 +87,7 @@ class Kubernetes_Operations(object):
         Configuration.set_default(call_config)
         return client.CoreV1Api()
 
+    @property
     def clientAppsV1(self):
         """
         client Apps for kubernetes apps
@@ -184,11 +197,13 @@ class Kubernetes_Operations(object):
                             failed_object = ''
                             for api_exceptions in api_exception_list:
                                 json_error_body = json.loads(api_exceptions.body)
-                                if 'details' in json_error_body:
-                                    failed_object = '%s %s already exists' % (
-                                        json_error_body.get('details').get('name'),
-                                        json_error_body.get('details').get('kind')
-                                    )
+                                if 'message' in json_error_body:
+                                    if 'not found' in json_error_body.get('message'):
+                                        failed_object = str(json_error_body.get('message'))
+                                        failed_object = failed_object.replace('"', '')
+                                    if 'already exists' in json_error_body.get('message'):
+                                        failed_object = str(json_error_body.get('message'))
+                                        failed_object = failed_object.replace('"', '')
                             response = failed_object
                         elif isinstance(exception, ScannerError):
                             response = 'Invalid yaml/json'
@@ -1074,6 +1089,32 @@ class Kubernetes_Operations(object):
             })
             response = resources
 
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def check_cluster_accessibility(self):
+        """
+        This method will check cluster if it is accessible or not
+        :return:
+        """
+        error = False
+        response = None
+        try:
+            # self.clientCoreV1.list_pod_for_all_namespaces()
+            # pass
+            flag, token = self.check_for_token()
+            if flag == 2:
+                # if token for click2cloud-sa-admin is found
+                response = 'Cluster is reachable'
+
+            elif flag == 1:
+                # if cluster is unreachable
+                raise Exception('Cluster is unreachable')
+            else:
+                raise Exception('Unable to create token')
         except Exception as e:
             error = True
             response = e.message

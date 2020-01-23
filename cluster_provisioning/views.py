@@ -1,3 +1,4 @@
+import base64
 import json
 
 from django.http import JsonResponse
@@ -7,9 +8,11 @@ from cluster.alibaba.compute_service import Alibaba_ECS
 from cluster.alibaba.container_service import Alibaba_CS
 from cluster.azure.compute_service import Azure_Compute_Service
 from cluster.azure.container_service import Azure_CS
+from cluster.on_premises_cluster.container_service import On_Premises_Cluster
 from cluster.others import miscellaneous_operation
 from cluster.others.miscellaneous_operation import key_validations_cluster_provisioning, get_access_key_secret_key_list, \
-    get_grouped_credential_list, check_for_provider_id, insert_or_update_cluster_details
+    get_grouped_credential_list, check_for_provider_id, insert_or_update_cluster_details, \
+    get_db_info_using_user_id_and_provider_id
 
 
 @api_view(['POST'])
@@ -3484,6 +3487,163 @@ def alibaba_all_resources(request):
         api_response.update({
             'error': e.message,
             'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def on_premises_add_cluster(request):
+    """
+    add on premises kubernetes clusters in cloud brain
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'error': None}
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'cluster_name', 'cluster_config']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
+            api_response.update({
+                'error': response_key_validations_cluster_provisioning.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            cluster_name = json_request.get('cluster_name')
+            cluster_config = base64.b64decode(json_request.get('cluster_config'))
+            on_prem_cluster = On_Premises_Cluster(user_id=user_id, cluster_name=cluster_name,
+                                                  cluster_config=cluster_config)
+            error_add_on_premises_cluster, response_add_on_premises_cluster = on_prem_cluster.add_on_premises_cluster()
+            if not error_add_on_premises_cluster:
+                # api_response.update({'cluster_detail':''})
+                pass
+            else:
+                raise Exception(response_add_on_premises_cluster)
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def on_premises_all_pod_details(request):
+    """
+    This method will list all pods for all on premises clusters
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'all_pod_details': [],
+                    'error': None}
+    cluster_list = []
+    all_on_premises = []
+    all_on_premises_cluster_details = {
+        'provider_names': [
+            {
+                'name': 'On-premises',
+                'id': 0
+            }
+        ],
+        'cluster_list': cluster_list
+    }
+    provider_id = 0
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+        else:
+            user_id = json_request.get('user_id')
+            # Fetching cluster_id from db
+            error_get_db_info, response_get_db_info = get_db_info_using_user_id_and_provider_id(user_id=user_id,
+                                                                                                provider_id=provider_id)
+            if not error_get_db_info:
+
+                for response_from_db in response_get_db_info:
+                    cluster_details = json.loads(base64.b64decode(response_from_db[4]))
+                    on_premises_cluster = On_Premises_Cluster(user_id, cluster_details.get('cluster_name'),
+                                                              json.loads(base64.b64decode(
+                                                                  cluster_details.get('cluster_config'))))
+                    result_get_pod = on_premises_cluster.get_pods(cluster_details)
+                    cluster_list.append(result_get_pod)
+                all_on_premises.append(all_on_premises_cluster_details)
+            else:
+                raise Exception(response_get_db_info)
+            api_response = {'is_successful': True,
+                            'all_pod_details': all_on_premises,
+                            'error': None}
+
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def on_premises_create_application(request):
+    """
+    create application on kubernetes cluster on the on_premises
+    :param request:
+    :return:
+    """
+    api_response = {
+        'is_successful': True,
+        'error': None}
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'cluster_id', 'application_body', 'namespace']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if not error_key_validations_cluster_provisioning:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            cluster_id = json_request.get('cluster_id')
+            application_body = json_request.get('application_body')
+            namespace = json_request.get('namespace')
+            user_id = json_request.get('user_id')
+            # Fetching cluster_id from db
+            error_get_db_info, response_get_db_info = get_db_info_using_user_id_and_provider_id(user_id=user_id,
+                                                                                                provider_id=provider_id)
+            if not error_get_db_info:
+
+                is_cluster_accessed = False
+                for response_from_db in response_get_db_info:
+                    if cluster_id in response_from_db[3]:
+                        is_cluster_accessed = True
+                        cluster_details = json.loads(base64.b64decode(response_from_db[4]))
+                        on_premises_cluster = On_Premises_Cluster(user_id, cluster_details.get('cluster_name'),
+                                                                  json.loads(base64.b64decode(
+                                                                      cluster_details.get('cluster_config'))))
+                        error_create_k8s_object, response_create_k8s_object = on_premises_cluster.create_k8s_object(
+                            cluster_id=cluster_id, data=application_body,
+                            namespace=namespace)
+                        if error_create_k8s_object:
+                            raise Exception(response_create_k8s_object)
+                if not is_cluster_accessed:
+                    raise Exception('No cluster with cluster id %s found' % cluster_id)
+            else:
+                raise Exception(response_get_db_info)
+        else:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+    except Exception as e:
+        api_response.update({
+            'is_successful': False,
+            'error': e.message
         })
     finally:
         return JsonResponse(api_response, safe=False)

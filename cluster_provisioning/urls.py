@@ -52,6 +52,8 @@ urlpatterns = [
     url(r'^azure/get-all-instance-type-list$', views.azure_instance_type_list),
     url(r'^azure/get-all-virtual-network-details$', views.azure_virtual_network_details),
     url(r'^alibaba/get-all-resources$', views.alibaba_all_resources),
-    #
+    url(r'^on-premises/add-cluster$', views.on_premises_add_cluster),
+    url(r'^on-premises/get-all-pod-details$', views.on_premises_all_pod_details),
+    url(r'^on-premises/create-application$', views.on_premises_create_application),
     # url(r'^azure/test$', views.zure_test),
 ]

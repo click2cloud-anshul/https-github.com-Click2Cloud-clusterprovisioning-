@@ -52,16 +52,17 @@ def get_access_key_secret_key_list(user_id, cloud_type):
                 error = True
                 response = result_api.get('error')
 
-    except Exception:
+    except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
+        print e.message
     finally:
         if cursor is not None:
             cursor.close()
         return error, response
 
 
-def key_validations_cluster_provisioning(request_keys=None, validation_keys=None):
+def key_validations_cluster_provisioning(request_keys, validation_keys):
     """
     validate the keys from request parameter
     :param request_keys: keys received from request which need to validate
@@ -83,12 +84,13 @@ def key_validations_cluster_provisioning(request_keys=None, validation_keys=None
                 if not isinstance(request_keys.get(key), int):
                     missing_value_flag = True
                     missing_values.append(key)
-            elif key in ['region_id', 'cluster_id', 'application_body', 'name', 'namespace']:
+            elif key in ['region_id', 'cluster_id', 'application_body', 'name', 'namespace', 'application_name',
+                         'cluster_config', 'cluster_name']:
                 # checking string length and checking the type of value is string only
                 if (len(str(request_keys.get(key)).strip())) == 0 or not isinstance(request_keys.get(key), unicode):
                     missing_value_flag = True
                     missing_values.append(key)
-            elif key in ['request_body']:
+            elif key in ['request_body', 'build_config', 'deployment_config']:
                 # checking dict length and checking the type of value is dict only
                 if not isinstance(request_keys.get(key), dict) or len(request_keys.get(key)) == 0:
                     missing_value_flag = True
@@ -133,7 +135,7 @@ def key_validations_cluster_provisioning(request_keys=None, validation_keys=None
             return error, response
 
 
-def insert_or_update_cluster_details(params=None):
+def insert_or_update_cluster_details(params):
     """
     insert or update the cluster details in the database
     :param params:
@@ -147,7 +149,7 @@ def insert_or_update_cluster_details(params=None):
         user_id = int(params.get('user_id'))
         provider_id = int(params.get('provider_id'))
         cluster_id = str(params.get('cluster_id'))
-        cluster_details = str(base64.b64encode(params.get('cluster_details').encode("utf-8")))
+        cluster_details = str(base64.b64encode(json.dumps(params.get('cluster_details'))))
         status = params.get('status')
         operation = params.get('operation')
         if params.get('is_insert'):
@@ -181,13 +183,14 @@ def insert_or_update_cluster_details(params=None):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         if cursor is not None:
             cursor.close()
         return error, response
 
 
-def insert_or_update_s2i_details(params=None, insert_unique_id=None):
+def insert_or_update_s2i_details(params, insert_unique_id):
     """
     insert or update the s2i details in the database
     :param params:
@@ -241,6 +244,7 @@ def insert_or_update_s2i_details(params=None, insert_unique_id=None):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         if cursor is not None:
             cursor.close()
@@ -271,7 +275,58 @@ def get_db_info_using_cluster_id(cluster_id=None):
         return error, response
 
 
-def get_s2i_details(user_id=None):
+def get_db_info_using_provider_id(provider_id):
+    """
+    retrieve the data of cluster from db
+    :param provider_id:
+    :return:
+    """
+    cursor = None
+    error = False
+    response = None
+    try:
+        cursor = connection.cursor()
+        sql_cmd = "SELECT * FROM public._cb_cp_cluster_details where provider_id = '{provider_id}'".format(
+            provider_id=provider_id)
+        cursor.execute(sql_cmd)
+        response = cursor.fetchall()
+    except Exception as e:
+        error = True
+        response = e.message
+        print e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return error, response
+
+
+def get_db_info_using_user_id_and_provider_id(user_id, provider_id):
+    """
+    retrieve the data of cluster from db
+    :param user_id:
+    :param provider_id:
+    :return:
+    """
+    cursor = None
+    error = False
+    response = None
+    try:
+        cursor = connection.cursor()
+        sql_cmd = "SELECT * FROM public._cb_cp_cluster_details where user_id = {user_id} and provider_id = {provider_id}".format(
+            user_id=user_id, provider_id=provider_id)
+        cursor.execute(sql_cmd)
+        response = cursor.fetchall()
+    except Exception as e:
+        error = True
+        response = e.message
+        print e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return error, response
+
+
+def get_s2i_details(user_id):
     """
     retrieve the data of s2i images from db
     :param user_id:
@@ -290,6 +345,7 @@ def get_s2i_details(user_id=None):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         if cursor is not None:
             cursor.close()
@@ -323,13 +379,14 @@ def delete_s2i_image_detail_from_db(json_request):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         if cursor is not None:
             cursor.close()
         return error, response
 
 
-def create_cluster_config_file(cluster_id=None, config_details=None):
+def create_cluster_config_file(cluster_id, config_details):
     """
     create the folder for the config file of kubernetes cluster with its id as a directory name
     :param cluster_id:
@@ -349,6 +406,7 @@ def create_cluster_config_file(cluster_id=None, config_details=None):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         return error, response
 
@@ -392,6 +450,7 @@ def get_grouped_credential_list(credentials):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         return error, response
 
@@ -419,11 +478,12 @@ def check_for_provider_id(provider_id, credentials):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         return error, response
 
 
-def insert_or_update_cluster_config_details(params=None):
+def insert_or_update_cluster_config_details(params):
     """
     insert or update the cluster details in the database
     :param params:
@@ -466,6 +526,7 @@ def insert_or_update_cluster_config_details(params=None):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         if cursor is not None:
             cursor.close()
@@ -507,6 +568,7 @@ def get_cluster_config_details(provider, cluster_id):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         if cursor is not None:
             cursor.close()
@@ -537,7 +599,7 @@ def run_postgres_sql_script():
         connection.commit()
         print("Database script execution completed")
     except Exception as e:
-        print(e)
+        print e.message
     finally:
         if cursor is not None:
             cursor.close()
