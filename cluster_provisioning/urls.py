@@ -55,5 +55,6 @@ urlpatterns = [
     url(r'^on-premises/add-cluster$', views.on_premises_add_cluster),
     url(r'^on-premises/get-all-pod-details$', views.on_premises_all_pod_details),
     url(r'^on-premises/create-application$', views.on_premises_create_application),
+    url(r'^on-premises/get-all-resources$', views.on_premises_get_all_resources),
     # url(r'^azure/test$', views.zure_test),
 ]

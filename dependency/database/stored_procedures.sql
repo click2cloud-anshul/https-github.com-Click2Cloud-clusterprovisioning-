@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION _cb_cp_sp_access_key_secret_key_test(p_users integer,
+CREATE OR REPLACE FUNCTION _cb_cp_sp_access_key_secret_key(p_users integer,
 	cloud_type text) RETURNS SETOF json
     LANGUAGE plpgsql
     AS $BODY$

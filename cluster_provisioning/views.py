@@ -1832,8 +1832,6 @@ def alibaba_all_cluster_details(request):
             else:
                 api_response.update({'is_successful': False,
                                      'error': response})
-
-
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -1901,8 +1899,6 @@ def alibaba_all_cluster_config_details(request):
             else:
                 api_response.update({'is_successful': False,
                                      'error': response})
-
-
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -3237,9 +3233,7 @@ def azure_resource_group_list(request):
                                 azure_client_id=access_key_secret_key.get('client_id'),
                                 azure_client_secret=access_key_secret_key.get('client_secret'),
                                 azure_tenant_id=access_key_secret_key.get('tenant_id'))
-
                             flag, resource_group_list = azure_Compute_Service.resource_group_list()
-
                             if flag:
                                 api_response.update({'is_successful': flag,
                                                      'error': 'Error occured while fetching the region list'})
@@ -3248,14 +3242,12 @@ def azure_resource_group_list(request):
                                 api_response.update({'is_successful': flag,
                                                      'resource_group_list': resource_group_list,
                                                      'error': None})
-
                 if providerId_access_flag:
                     api_response.update({'is_successful': False,
                                          'error': 'Invalid provider_id or no data available.'})
             else:
                 api_response.update({'is_successful': False,
                                      'error': 'Invalid user_id or no data available.'})
-
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -3313,10 +3305,8 @@ def azure_instance_type_list(request):
                                 azure_client_id=access_key_secret_key.get('client_id'),
                                 azure_client_secret=access_key_secret_key.get('client_secret'),
                                 azure_tenant_id=access_key_secret_key.get('tenant_id'))
-
                             flag, instance_type_list = azure_Compute_Service.instance_type(
                                 location=json_request.get('region_id'))
-
                             if flag:
                                 api_response.update({'is_successful': flag,
                                                      'error': 'Error occured while fetching the instance type list'})
@@ -3331,7 +3321,6 @@ def azure_instance_type_list(request):
             else:
                 api_response.update({'is_successful': False,
                                      'error': 'Invalid user_id or no data available.'})
-
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -3392,7 +3381,6 @@ def azure_virtual_network_details(request):
 
                             flag, virtual_network_details = azure_Compute_Service.virtual_network(
                                 location=json_request.get('region_id'))
-
                             if flag:
                                 api_response.update({'is_successful': flag,
                                                      'error': 'Error occured while fetching the virtual network details'})
@@ -3407,7 +3395,6 @@ def azure_virtual_network_details(request):
             else:
                 api_response.update({'is_successful': False,
                                      'error': 'Invalid user_id or no data available.'})
-
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -3420,14 +3407,14 @@ def azure_virtual_network_details(request):
 @api_view(['POST'])
 def alibaba_all_resources(request):
     """
-    get the details of all config map available in the alibaba
+    get the details of all resources count available in the alibaba
     :param request:
     :return:
     """
+    all_provider_cluster_details = {}
     api_response = {'is_successful': True,
-                    'all_config_map_details': [],
+                    'all_resource_details': all_provider_cluster_details,
                     'error': None}
-    all_provider_cluster_details = []
     try:
         json_request = json.loads(request.body)
         valid_json_keys = ['user_id', 'provider_id', 'cluster_id']
@@ -3439,10 +3426,10 @@ def alibaba_all_resources(request):
                 'error': response_key_validations_cluster_provisioning.get('error'),
                 'is_successful': False
             })
-
         else:
             user_id = json_request.get('user_id')
             cluster_id = json_request.get('cluster_id')
+            provider_id = json_request.get('provider_id')
             # Fetching access keys and secret keys from db
             error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
                 user_id, miscellaneous_operation.ALIBABA_CLOUD)
@@ -3450,39 +3437,41 @@ def alibaba_all_resources(request):
                 # groups the common credentials according to the access key
                 error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
                     response_get_access_key_secret_key_list)
-                if not error_get_grouped_credential_list:
-
-                    for credential in response_get_grouped_credential_list:
-                        providers_cluster_info = {}
-                        alibaba_cs = Alibaba_CS(
-                            ali_access_key=credential.get('access_key'),
-                            ali_secret_key=credential.get('secret_key'),
-                            region_id='default'
-                        )
-                        error_get_all_resources_list, result_get_all_resources_list = alibaba_cs.get_all_resources_list(
-                            cluster_id)
-
-                        if not error_get_all_resources_list:
-                            # access_key_secret_key['name']: cluster_details_list
-                            providers_cluster_info.update({
-                                'provider_names': credential.get('provider_name_list'),
-                                'cluster_info': result_get_all_resources_list})
+                error, response = check_for_provider_id(provider_id, response_get_access_key_secret_key_list)
+                if not error:
+                    if not error_get_grouped_credential_list:
+                        flag_for_provider = False
+                        access_credentials = {}
+                        for credential in response_get_grouped_credential_list:
+                            for provider in credential.get('provider_name_list'):
+                                if provider_id == provider.get('id'):
+                                    flag_for_provider = True
+                                    access_credentials = credential
+                        if flag_for_provider:
+                            alibaba_cs = Alibaba_CS(
+                                ali_access_key=access_credentials.get('access_key'),
+                                ali_secret_key=access_credentials.get('secret_key'),
+                                region_id='default'
+                            )
+                            error_get_all_resources_list, result_get_all_resources_list = alibaba_cs.get_all_resources_list(
+                                cluster_id)
+                            if not error_get_all_resources_list:
+                                # access_key_secret_key['name']: cluster_details_list
+                                all_provider_cluster_details = result_get_all_resources_list
+                            else:
+                                # skip if any error occurred for a particular key
+                                raise Exception(result_get_all_resources_list)
                         else:
-                            # skip if any error occurred for a particular key
-                            providers_cluster_info.update({
-                                'provider_names': credential.get('provider_name_list'),
-                                'cluster_info': [],
-                                'error': result_get_all_resources_list})
-                        all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_resource_details': all_provider_cluster_details,
-                                    'error': None}
+                            raise Exception('Invalid provider_id provided')
+                        api_response.update({
+                            'all_resource_details': all_provider_cluster_details,
+                        })
+                    else:
+                        raise Exception(response_get_grouped_credential_list)
                 else:
-                    api_response.update({'is_successful': False,
-                                         'error': response_get_grouped_credential_list})
+                    raise Exception(response)
             else:
-                api_response.update({'is_successful': False,
-                                     'error': response_get_access_key_secret_key_list})
+                raise Exception(response_get_access_key_secret_key_list)
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -3569,7 +3558,6 @@ def on_premises_all_pod_details(request):
             error_get_db_info, response_get_db_info = get_db_info_using_user_id_and_provider_id(user_id=user_id,
                                                                                                 provider_id=provider_id)
             if not error_get_db_info:
-
                 for response_from_db in response_get_db_info:
                     cluster_details = json.loads(base64.b64decode(response_from_db[4]))
                     on_premises_cluster = On_Premises_Cluster(user_id, cluster_details.get('cluster_name'),
@@ -3583,7 +3571,6 @@ def on_premises_all_pod_details(request):
             api_response = {'is_successful': True,
                             'all_pod_details': all_on_premises,
                             'error': None}
-
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -3610,7 +3597,6 @@ def on_premises_create_application(request):
         error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
             json_request, valid_json_keys)
         if not error_key_validations_cluster_provisioning:
-            user_id = json_request.get('user_id')
             provider_id = json_request.get('provider_id')
             cluster_id = json_request.get('cluster_id')
             application_body = json_request.get('application_body')
@@ -3620,7 +3606,6 @@ def on_premises_create_application(request):
             error_get_db_info, response_get_db_info = get_db_info_using_user_id_and_provider_id(user_id=user_id,
                                                                                                 provider_id=provider_id)
             if not error_get_db_info:
-
                 is_cluster_accessed = False
                 for response_from_db in response_get_db_info:
                     if cluster_id in response_from_db[3]:
@@ -3644,6 +3629,66 @@ def on_premises_create_application(request):
         api_response.update({
             'is_successful': False,
             'error': e.message
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def on_premises_get_all_resources(request):
+    """
+    This method will list all resources count for on premises clusters
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'all_resource_details': [],
+                    'error': None}
+    all_on_premises_cluster_details = {}
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'cluster_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
+            api_response.update({
+                'error': response_key_validations_cluster_provisioning.get('error'),
+                'is_successful': False
+            })
+        else:
+            provider_id = json_request.get('provider_id')
+            cluster_id = json_request.get('cluster_id')
+            user_id = json_request.get('user_id')
+            # Fetching cluster_id from db
+            error_get_db_info, response_get_db_info = get_db_info_using_user_id_and_provider_id(user_id=user_id,
+                                                                                                provider_id=provider_id)
+            if not error_get_db_info:
+                cluster_access_flag = False
+                for response_from_db in response_get_db_info:
+                    if cluster_id == response_from_db[3]:
+                        cluster_access_flag = True
+                        cluster_details = json.loads(base64.b64decode(response_from_db[4]))
+                        on_premises_cluster = On_Premises_Cluster(user_id, cluster_details.get('cluster_name'),
+                                                                  json.loads(base64.b64decode(
+                                                                      cluster_details.get('cluster_config'))))
+                        error_get_all_resources_list, response_get_all_resources_list = on_premises_cluster.get_all_resources_list(
+                            cluster_id)
+                        if not error_get_all_resources_list:
+                            all_on_premises_cluster_details = response_get_all_resources_list
+                        else:
+                            raise Exception(response_get_all_resources_list)
+                if not cluster_access_flag:
+                    raise Exception('No cluster_id %s found' % cluster_id)
+            else:
+                raise Exception(response_get_db_info)
+            api_response = {'is_successful': True,
+                            'all_resource_details': all_on_premises_cluster_details,
+                            'error': None}
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
         })
     finally:
         return JsonResponse(api_response, safe=False)

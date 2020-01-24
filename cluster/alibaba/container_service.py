@@ -3033,11 +3033,11 @@ class Alibaba_CS:
 
     def get_all_resources_list(self, cluster_id):
         """
-        Get the detail of all the config map of all the clusters in alibaba console
+        Get the detail of all the resources of the cluster in alibaba console
         :return:
         """
-        cluster_details_list = []
         error = False
+        cluster_details = {}
         response = []
         cluster_access_flag = False
         try:
@@ -3047,11 +3047,9 @@ class Alibaba_CS:
                     response = []
                 else:
                     for cluster in response_describe_all_clusters:
-                        if cluster_id is cluster.get('cluster_id'):
+                        if cluster_id == cluster.get('cluster_id'):
                             cluster_access_flag = True
-                            cluster_details = {'resources': {},
-                                               'cluster_name': cluster.get('name'),
-                                               'error': None}
+
                             error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                                 cluster)
                             if not error_check_database_state_and_update:
@@ -3069,28 +3067,22 @@ class Alibaba_CS:
                                                 token=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_token'))
                                             if not error_get_all_resources:
-                                                cluster_details.update({
-                                                    'resources': response_get_all_resources
-                                                })
+                                                cluster_details = response_get_all_resources
                                             else:
-                                                cluster_details.update({'error': response_get_all_resources})
+                                                raise Exception(response_get_all_resources)
                                         else:
-                                            cluster_details.update(
-                                                {'error': response_describe_cluster_config_token_endpoint})
+                                            raise Exception(response_describe_cluster_config_token_endpoint)
                                     else:
                                         # If cluster is not in running state
-                                        cluster_details.update({'error': 'Cluster is not in running state'})
+                                        raise Exception('Cluster is not in running state')
                                 else:
-                                    cluster_details.update({
-                                        'error':
-                                            'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                    })
+                                    raise Exception(
+                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
                             else:
                                 raise Exception(response_check_database_state_and_update)
-                            cluster_details_list.append(cluster_details)
                     if not cluster_access_flag:
                         raise Exception('Please provide valid cluster_id')
-                    response = cluster_details_list
+                    response = cluster_details
             else:
                 raise Exception(response_describe_all_clusters)
 

@@ -31,7 +31,7 @@ def get_access_key_secret_key_list(user_id, cloud_type):
     try:
         # create cursor for calling stored procedure
         cursor = connection.cursor()
-        cmd = "SELECT public._cb_cp_sp_access_key_secret_key_test('%s','%s')" % (user_id, cloud_type)
+        cmd = "SELECT public._cb_cp_sp_access_key_secret_key('%s','%s')" % (user_id, cloud_type)
         cursor.execute(cmd)
         rows = cursor.fetchall()
         result = rows[0][0]

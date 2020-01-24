@@ -12,6 +12,7 @@ from kubernetes.client import Configuration
 from kubernetes.config import kube_config
 from kubernetes.utils import FailToCreateError
 from pint import UnitRegistry
+from urllib3.exceptions import MaxRetryError
 from yaml.scanner import ScannerError
 
 from clusterProvisioningClient.settings import BASE_DIR
@@ -30,6 +31,8 @@ def create_file_for_app_deploy(cluster_id, data):
         file_name = uuid.uuid1().hex
         path = os.path.join(BASE_DIR, 'config_dumps', cluster_id)
         data = base64.b64decode(data)
+        if '---' == data[-3:]:
+            data = data[:-3]
         with open(os.path.join(path, file_name), "w+") as outfile:
             outfile.write(data)
         path = os.path.join(BASE_DIR, 'config_dumps', cluster_id, file_name)
@@ -44,6 +47,47 @@ def create_file_for_app_deploy(cluster_id, data):
 
     finally:
         return error, response
+
+
+def check_for_all_namespaces(yaml_file_path):
+    """
+    This method will check if multiple yaml are present or not
+    if yes then _all namespace will be used
+    if not then as it is will be used
+    :param yaml_file_path:
+    :return:
+    """
+    is_all_namespace = False
+    error = False
+    response = None
+    try:
+        with open(path.abspath(yaml_file_path)) as file:
+            yml_document_all = yaml.safe_load_all(file)
+            created_app_list = []
+            app = {}
+            for yml_document in yml_document_all:
+                if 'List' in yml_document.get('kind'):
+                    for yml_object in yml_document.get('items'):
+                        app.update({
+                            'name': yml_object.get('metadata').get('name'),
+                            'kind': yml_document.get('kind')
+                        })
+                else:
+                    app.update({
+                        'name': yml_document.get('metadata').get('name'),
+                        'kind': yml_document.get('kind')
+                    })
+                created_app_list.append(app)
+            if len(created_app_list) > 0:
+                is_all_namespace = True
+    except AttributeError as e:
+        error = True
+        response = 'Invalid YAML/JSON provided'
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        return error, response, is_all_namespace
 
 
 class Kubernetes_Operations(object):
@@ -139,10 +183,21 @@ class Kubernetes_Operations(object):
         error = False
 
         try:
-            error, response = create_file_for_app_deploy(cluster_id, data)
+            error_create_file_for_app_deploy, response_create_file_for_app_deploy = create_file_for_app_deploy(
+                cluster_id, data)
 
-            if not error:
-                yaml_file_path = response
+            if not error_create_file_for_app_deploy:
+                yaml_file_path = response_create_file_for_app_deploy
+
+                error_check_for_all_namespaces, response_check_for_all_namespaces, is_all_namespace = check_for_all_namespaces(
+                    yaml_file_path)
+
+                if not error_check_for_all_namespaces:
+                    if is_all_namespace:
+                        namespace = '_all'
+                else:
+                    raise Exception(response_check_for_all_namespaces)
+
                 kube_loader = kube_config.KubeConfigLoader(self.config)
                 call_config = type.__call__(Configuration)
                 try:
@@ -189,6 +244,8 @@ class Kubernetes_Operations(object):
 
                         if isinstance(exception, KeyError):
                             response = 'Key is missing ' + exception.message
+                        elif isinstance(exception, TypeError):
+                            response = 'Invalid YAML/JSON provided'
                         elif isinstance(exception, ValueError):
                             response = 'Value is missing ' + exception.message
                         elif isinstance(exception, FailToCreateError):
@@ -201,19 +258,24 @@ class Kubernetes_Operations(object):
                                     if 'not found' in json_error_body.get('message'):
                                         failed_object = str(json_error_body.get('message'))
                                         failed_object = failed_object.replace('"', '')
-                                    if 'already exists' in json_error_body.get('message'):
+                                    elif 'already exists' in json_error_body.get('message'):
+                                        failed_object = str(json_error_body.get('message'))
+                                        failed_object = failed_object.replace('"', '')
+                                    else:
                                         failed_object = str(json_error_body.get('message'))
                                         failed_object = failed_object.replace('"', '')
                             response = failed_object
                         elif isinstance(exception, ScannerError):
                             response = 'Invalid yaml/json'
+                        elif isinstance(exception, MaxRetryError):
+                            response = 'Cluster is not available'
                         else:
                             response = exception.message
                     except Exception as e:
                         response = e.message
             else:
                 # if yaml file is not created.
-                raise Exception(response)
+                raise Exception(response_create_file_for_app_deploy)
         except Exception as e:
             error = True
             response = e.message
@@ -345,7 +407,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -369,7 +434,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -428,7 +496,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -452,7 +523,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -476,7 +550,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -500,7 +577,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -524,7 +604,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -548,7 +631,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -572,7 +658,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -596,7 +685,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -620,7 +712,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -644,7 +739,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -668,7 +766,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -692,7 +793,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -716,7 +820,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -740,7 +847,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -764,7 +874,10 @@ class Kubernetes_Operations(object):
             response = json.loads(response.text)
         except Exception as e:
             error = True
-            response = e.message
+            if isinstance(e.message, MaxRetryError):
+                response = 'Unable to fetch details'
+            else:
+                response = e.message
         finally:
             return error, response
 
@@ -1114,7 +1227,11 @@ class Kubernetes_Operations(object):
                 # if cluster is unreachable
                 raise Exception('Cluster is unreachable')
             else:
-                raise Exception('Unable to create token')
+                error_get_token, response_get_token = self.get_token()
+                if not error_get_token:
+                    response = response_get_token
+                else:
+                    raise Exception(response_get_token)
         except Exception as e:
             error = True
             response = e.message

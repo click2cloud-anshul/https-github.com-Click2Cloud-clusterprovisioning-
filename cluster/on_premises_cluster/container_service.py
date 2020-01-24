@@ -274,3 +274,33 @@ class On_Premises_Cluster:
             response = e.message
         finally:
             return error, response
+
+    def get_all_resources_list(self, cluster_id):
+        """
+
+        :return:
+        """
+        error = False
+        response = None
+
+        try:
+            error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                cluster_id)
+            if not error_describe_cluster_config_token_endpoint:
+                # Adding unique labels for the cluster_roles in a single cluster
+                k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                error_get_all_resources, response_get_all_resources = k8s_obj.get_all_resources(
+                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                        'cluster_public_endpoint'),
+                    token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                if not error_get_all_resources:
+                    response = response_get_all_resources
+                else:
+                    raise Exception(response_get_all_resources)
+            else:
+                raise Exception(response_describe_cluster_config_token_endpoint)
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
