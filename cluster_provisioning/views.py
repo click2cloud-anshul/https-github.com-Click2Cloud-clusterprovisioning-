@@ -3473,9 +3473,30 @@ def alibaba_all_resources(request):
             else:
                 raise Exception(response_get_access_key_secret_key_list)
     except Exception as e:
+        resources = {
+            'namespaces': 0,
+            'pods': 0,
+            'deployments': 0,
+            'services': 0,
+            'secrets': 0,
+            'nodes': 0,
+            'jobs': 0,
+            'cron_jobs': 0,
+            'config_maps': 0,
+            'persistent_volume_claims': 0,
+            'daemon_sets': 0,
+            'ingress': 0,
+            'persistent_volumes': 0,
+            'replica_sets': 0,
+            'replication_controller': 0,
+            'roles': 0,
+            'stateful_sets': 0,
+            'cluster_roles': 0
+        }
         api_response.update({
             'error': e.message,
-            'is_successful': False
+            'is_successful': False,
+            'all_resource_details': resources
         })
     finally:
         return JsonResponse(api_response, safe=False)
@@ -3686,9 +3707,30 @@ def on_premises_get_all_resources(request):
                             'all_resource_details': all_on_premises_cluster_details,
                             'error': None}
     except Exception as e:
+        resources = {
+            'namespaces': 0,
+            'pods': 0,
+            'deployments': 0,
+            'services': 0,
+            'secrets': 0,
+            'nodes': 0,
+            'jobs': 0,
+            'cron_jobs': 0,
+            'config_maps': 0,
+            'persistent_volume_claims': 0,
+            'daemon_sets': 0,
+            'ingress': 0,
+            'persistent_volumes': 0,
+            'replica_sets': 0,
+            'replication_controller': 0,
+            'roles': 0,
+            'stateful_sets': 0,
+            'cluster_roles': 0
+        }
         api_response.update({
             'error': e.message,
-            'is_successful': False
+            'is_successful': False,
+            'all_resource_details': resources
         })
     finally:
         return JsonResponse(api_response, safe=False)

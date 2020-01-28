@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION _cb_cp_sp_access_key_secret_key(p_users integer,
     AS $BODY$
 BEGIN
 return query select array_to_json(array_agg(row_to_json(t))) as access_key_or_secret_key_details from (
-SELECT 	_cb_credentials.client_id,	_cb_credentials.client_secret , ext_management_systems.name , ext_management_systems.id
+SELECT 	_cb_credentials.client_id,	_cb_credentials.client_secret , _cb_credentials.tenant_id, _cb_credentials.subscription_id, ext_management_systems.name , ext_management_systems.id
 FROM ext_management_systems
 INNER JOIN _cb_credentials
 ON ext_management_systems.name = _cb_credentials.name

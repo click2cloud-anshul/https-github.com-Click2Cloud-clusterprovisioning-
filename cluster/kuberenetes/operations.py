@@ -189,14 +189,14 @@ class Kubernetes_Operations(object):
             if not error_create_file_for_app_deploy:
                 yaml_file_path = response_create_file_for_app_deploy
 
-                error_check_for_all_namespaces, response_check_for_all_namespaces, is_all_namespace = check_for_all_namespaces(
-                    yaml_file_path)
-
-                if not error_check_for_all_namespaces:
-                    if is_all_namespace:
-                        namespace = '_all'
-                else:
-                    raise Exception(response_check_for_all_namespaces)
+                # error_check_for_all_namespaces, response_check_for_all_namespaces, is_all_namespace = check_for_all_namespaces(
+                #     yaml_file_path)
+                #
+                # if not error_check_for_all_namespaces:
+                #     if is_all_namespace:
+                #         namespace = '_all'
+                # else:
+                #     raise Exception(response_check_for_all_namespaces)
 
                 kube_loader = kube_config.KubeConfigLoader(self.config)
                 call_config = type.__call__(Configuration)

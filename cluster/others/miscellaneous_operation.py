@@ -497,7 +497,7 @@ def insert_or_update_cluster_config_details(params):
         provider = str(params.get('provider'))
         cluster_id = str(params.get('cluster_id'))
         cluster_public_endpoint = str(params.get('cluster_public_endpoint'))
-        cluster_config = str(base64.b64encode(params.get('cluster_config').encode("utf-8")))
+        cluster_config = str(base64.b64encode(str(params.get('cluster_config'))))
         cluster_token = str(base64.b64encode(params.get('cluster_token').encode("utf-8")))
         if params.get('is_insert'):
             cmd = "INSERT INTO public._cb_cp_cluster_config_details(provider, cluster_id, cluster_public_endpoint, " \
