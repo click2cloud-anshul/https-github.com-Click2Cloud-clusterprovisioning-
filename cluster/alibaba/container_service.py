@@ -3044,7 +3044,7 @@ class Alibaba_CS:
             error, response_describe_all_clusters = self.describe_all_clusters()
             if not error:
                 if len(response_describe_all_clusters) == 0:
-                    response = []
+                    raise Exception('No Clusters are in running state')
                 else:
                     for cluster in response_describe_all_clusters:
                         if cluster_id == cluster.get('cluster_id'):
