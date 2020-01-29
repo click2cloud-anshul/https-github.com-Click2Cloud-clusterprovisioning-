@@ -210,13 +210,13 @@ class On_Premises_Cluster:
                                 if error_insert_or_update_cluster_config_details:
                                     raise Exception(
                                         response_insert_or_update_cluster_config_details)
-                                response = config_detail
                         else:
                             # If cluster api server endpoint key not present in config
                             raise Exception(
                                 'Unable to find cluster public api server endpoint details')
             else:
                 raise Exception(response_get_cluster_config_details)
+            response = config_detail
         except Exception as e:
             error = True
             response = e.message
