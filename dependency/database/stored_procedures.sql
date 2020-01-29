@@ -25,5 +25,5 @@ AND ems_type=cloud_type
 END;
 $BODY$;
 
-ALTER FUNCTION _cb_cp_sp_access_key_secret_key_test(p_users integer,	cloud_type text)
+ALTER FUNCTION _cb_cp_sp_access_key_secret_key(p_users integer,	cloud_type text)
     OWNER TO root;

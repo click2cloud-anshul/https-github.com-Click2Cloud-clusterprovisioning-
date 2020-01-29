@@ -144,11 +144,11 @@ class On_Premises_Cluster:
 
     def describe_cluster_config_token_endpoint(self, cluster_id):
         """
-        This method will provide config, token, and enpoint details from db or config
+        This method will provide config, token, and endpoint details from db or config
         :param cluster_id:
         :return:
         """
-        provider = 'Alibaba:Cloud'
+        provider = 'On-Premises'
         error = False
         response = None
         config_detail = {
@@ -210,11 +210,11 @@ class On_Premises_Cluster:
                                 if error_insert_or_update_cluster_config_details:
                                     raise Exception(
                                         response_insert_or_update_cluster_config_details)
+                                response = config_detail
                         else:
                             # If cluster api server endpoint key not present in config
                             raise Exception(
                                 'Unable to find cluster public api server endpoint details')
-                    response = config_detail
             else:
                 raise Exception(response_get_cluster_config_details)
         except Exception as e:
