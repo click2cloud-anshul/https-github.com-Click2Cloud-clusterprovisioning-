@@ -7,8 +7,9 @@ import json
 import subprocess
 import uuid
 
+import docker
 from aliyunsdkcr.request.v20160607 import GetNamespaceRequest, DeleteNamespaceRequest, CreateRepoRequest, \
-    DeleteRepoRequest, GetRepoListByNamespaceRequest
+    DeleteRepoRequest, GetRepoListRequest
 
 access_key = ''
 secret_key = ''
@@ -340,8 +341,9 @@ def get_repo_list_by_namespace():
                     namespace_list.append(response.get('data').get('namespace'))
         print namespace_list
         for namespace in namespace_list:
-            request = GetRepoListByNamespaceRequest.GetRepoListByNamespaceRequest()
-            request.set_RepoNamespace(namespace.get('namespace'))
+            request = None
+            request = GetRepoListRequest.GetRepoListRequest()
+            # request.set_
             response = client.do_action_with_exception(request)
 
             response = json.loads(response)
@@ -353,4 +355,22 @@ def get_repo_list_by_namespace():
         print(e)
 
 
-get_repo_list_by_namespace()
+def delete_builder_image():
+    error = False
+    response = None
+    try:
+        docker_cli = docker.APIClient()
+        image = 'click2cloud/nodejs-10'
+        get_pull_images = docker_cli.images(image)
+        if get_pull_images != []:
+            remove_pull_image = docker_cli.remove_image(image)
+
+    except docker.errors.APIError as e:
+        error = True
+        response = e.message
+
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        return error, response

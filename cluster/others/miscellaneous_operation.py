@@ -190,7 +190,7 @@ def insert_or_update_cluster_details(params):
         return error, response
 
 
-def insert_or_update_s2i_details(params, insert_unique_id):
+def insert_or_update_s2i_details(params, insert_unique_id=None):
     """
     insert or update the s2i details in the database
     :param params:
@@ -207,7 +207,7 @@ def insert_or_update_s2i_details(params, insert_unique_id):
         comment = params.get('comment')
         tag = params.get('tag')
         new_image_name = params.get('image_name')
-
+        print 'comment = %s for new_image_name = %s' % (comment, new_image_name)
         if params.get('is_insert'):
             github_url = params.get('github_url')
             builder_image = params.get('builder_image')
