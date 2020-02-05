@@ -6,10 +6,11 @@ import base64
 import json
 import subprocess
 import uuid
-
 import docker
+
+from aliyunsdkcore.acs_exception.exceptions import ServerException, ClientException
 from aliyunsdkcr.request.v20160607 import GetNamespaceRequest, DeleteNamespaceRequest, CreateRepoRequest, \
-    DeleteRepoRequest, GetRepoListRequest
+    DeleteRepoRequest, GetRepoListRequest, UpdateRepoRequest, GetRepoListByNamespaceRequest
 
 access_key = ''
 secret_key = ''
@@ -144,24 +145,24 @@ def get_list_of_namespaces_alibaba_registry():
     from aliyunsdkcore.client import AcsClient
     from aliyunsdkcr.request.v20160607 import GetNamespaceListRequest
     client = AcsClient(access_key, secret_key, 'cn-hangzhou')
-
+    endpoint = "cr.cn-hangzhou.aliyuncs.com"
     request = GetNamespaceListRequest.GetNamespaceListRequest()
     # Set the parameters
     # request.set_RepoNamespace("repoNamespaceName")
     # request.set_RepoName("repoName")
     # request.set_Tag("tag")
-    request.set_endpoint("cr.cn-hangzhou.aliyuncs.com")
+    request.set_endpoint(endpoint)
     # Make a request
     try:
         namespace_list = []
         response = client.do_action_with_exception(request)
-        response = json.loads(response)
-        if 'data' in response:
-            if 'namespaces' in response.get('data'):
-                response_list_of_namespaces = response.get('data').get('namespaces')
+        response_GetNamespaceListRequest = json.loads(response)
+        if 'data' in response_GetNamespaceListRequest:
+            if 'namespaces' in response_GetNamespaceListRequest.get('data'):
+                response_list_of_namespaces = response_GetNamespaceListRequest.get('data').get('namespaces')
                 for response_namespace in response_list_of_namespaces:
                     request = GetNamespaceRequest.GetNamespaceRequest()
-                    request.set_endpoint("cr.cn-hangzhou.aliyuncs.com")
+                    request.set_endpoint(endpoint)
                     request.set_Namespace(response_namespace.get('namespace'))
                     response = client.do_action_with_exception(request)
                     response = json.loads(response)
@@ -203,7 +204,7 @@ def create_namespace_request():
     # Make a request
     body = """{
     "Namespace": {
-        "Namespace": "test-c2c-namespace-123",
+        "Namespace": "abc-c2c-123",
     }
 }"""
     try:
@@ -228,7 +229,7 @@ def update_namespace_request():
     # request.set_RepoName("repoName")
     # request.set_Tag("tag")
     request.set_endpoint("cr.cn-hangzhou.aliyuncs.com")
-    request.set_Namespace('test-c2c-namespace-123')
+    request.set_Namespace('abc-c2c-123')
     # Make a request
     body = """{
          "Namespace": {
@@ -255,12 +256,14 @@ def delete_namespace_request():
     # request.set_RepoName("repoName")
     # request.set_Tag("tag")
     request.set_endpoint("cr.cn-hangzhou.aliyuncs.com")
-    request.set_Namespace('test-c2c-namespace-123')
+    request.set_Namespace('abc-c2c-123')
     # Make a request
     try:
         response = client.do_action_with_exception(request)
         response = json.loads(response)
         pass
+    except ServerException as e:
+        print e
     except Exception as e:
         print e
 
@@ -278,7 +281,7 @@ def create_repository():
     # Make a request
     body = """ {
     "repo": {   
-        "RepoNamespace": "test-c2c-namespace-123",   
+        "RepoNamespace": "click2cloud",   
         "RepoName": "testrepo-1",   
         "Summary": "tes-repo",   
         "Detail": "test-repo",   
@@ -289,7 +292,8 @@ def create_repository():
         request.set_content(body.encode('utf-8'))
         response = client.do_action_with_exception(request)
         response = json.loads(response)
-        pass
+    except ServerException as e:
+        print e
     except Exception as e:
         print e
 
@@ -301,12 +305,16 @@ def delete_repo_request():
     request = DeleteRepoRequest.DeleteRepoRequest()
     request.set_endpoint("cr.cn-hangzhou.aliyuncs.com")
     request.set_RepoName('testrepo-1')
-    request.set_RepoNamespace('test-c2c-namespace-123')
+    request.set_RepoNamespace('click2cloud')
     # Make a request
     try:
         response = client.do_action_with_exception(request)
         response = json.loads(response)
         pass
+    except ServerException as e:
+        print(e)
+    except ClientException as e:
+        print(e)
     except Exception as e:
         print e
 
@@ -338,22 +346,89 @@ def get_repo_list_by_namespace():
                     request.set_Namespace(response_namespace.get('namespace'))
                     response = client.do_action_with_exception(request)
                     response = json.loads(response)
-                    namespace_list.append(response.get('data').get('namespace'))
+                    namespace_list.append(response.get('data').get('namespace').get('namespace'))
         print namespace_list
+
+        repoList = []
         for namespace in namespace_list:
+            repo_dict = {
+                'namespace': '',
+                'repo_list': []
+            }
+            request = None
+            request = GetRepoListByNamespaceRequest.GetRepoListByNamespaceRequest()
+            request.set_RepoNamespace(namespace)
+            request.set_endpoint("cr.cn-hangzhou.aliyuncs.com")
             request = None
             request = GetRepoListRequest.GetRepoListRequest()
             # request.set_
             response = client.do_action_with_exception(request)
+            repo_dict.update({'namespace': namespace,
+                              'repo_list': json.loads(response).get('data').get('repos')})
+            repoList.append(repo_dict)
+        print repoList
+    except ServerException as e:
+        print(e)
+    except ClientException as e:
+        print(e)
+    except Exception as e:
+        print e
 
-            response = json.loads(response)
 
+def delete_builder_image():
+    error = False
+    response = None
+    try:
+        docker_cli = docker.APIClient()
+        image = 'click2cloud/nodejs-10'
+        get_pull_images = docker_cli.images(image)
+        if get_pull_images != []:
+            remove_pull_image = docker_cli.remove_image(image)
+
+    except docker.errors.APIError as e:
+        error = True
+        response = e.message
+
+    except Exception as e:
+        error = True
+        response = e.message
+    finally:
+        return error, response
+
+
+def update_repo_request_with_namespace():
+    from aliyunsdkcore.client import AcsClient
+    client = AcsClient(access_key, secret_key, 'cn-hangzhou')
+
+    request = UpdateRepoRequest.UpdateRepoRequest()
+    # Set the parameters
+    # request.set_RepoNamespace("repoNamespaceName")
+    # request.set_RepoName("repoName")
+    # request.set_Tag("tag")
+    request.set_endpoint("cr.cn-hangzhou.aliyuncs.com")
+    request.set_RepoNamespace('click2cloud')
+    request.set_RepoName('testrepo-1')
+    # Make a request
+    body = """{
+         "Repo": {        
+        "RepoType": "PRIVATE"
+    }
+}"""
+    try:
+        request.set_content(body.encode('utf-8'))
+        response = client.do_action_with_exception(request)
+        response = json.loads(response)
         pass
     except ServerException as e:
         print(e)
     except ClientException as e:
         print(e)
+    except Exception as e:
+        print e
 
+
+#
+# get_repo_list_by_namespace()
 
 def delete_builder_image():
     error = False
