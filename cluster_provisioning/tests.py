@@ -6,11 +6,12 @@ import base64
 import json
 import subprocess
 import uuid
-import docker
 
+import docker
 from aliyunsdkcore.acs_exception.exceptions import ServerException, ClientException
+from aliyunsdkcore.client import AcsClient
 from aliyunsdkcr.request.v20160607 import GetNamespaceRequest, DeleteNamespaceRequest, CreateRepoRequest, \
-    DeleteRepoRequest, GetRepoListRequest, UpdateRepoRequest, GetRepoListByNamespaceRequest
+    DeleteRepoRequest, GetRepoListRequest, UpdateRepoRequest, GetRepoListByNamespaceRequest, CreateNamespaceRequest
 
 access_key = ''
 secret_key = ''
@@ -189,10 +190,6 @@ def get_list_of_namespaces_alibaba_registry():
 
 
 def create_namespace_request():
-    from aliyunsdkcore.acs_exception.exceptions import ClientException
-    from aliyunsdkcore.acs_exception.exceptions import ServerException
-    from aliyunsdkcore.client import AcsClient
-    from aliyunsdkcr.request.v20160607 import CreateNamespaceRequest
     client = AcsClient(access_key, secret_key, 'cn-hangzhou')
 
     request = CreateNamespaceRequest.CreateNamespaceRequest()
@@ -204,7 +201,7 @@ def create_namespace_request():
     # Make a request
     body = """{
     "Namespace": {
-        "Namespace": "abc-c2c-123",
+        "Namespace": "fsdfgxgfdgdf",
     }
 }"""
     try:
@@ -425,27 +422,3 @@ def update_repo_request_with_namespace():
         print(e)
     except Exception as e:
         print e
-
-
-#
-# get_repo_list_by_namespace()
-
-def delete_builder_image():
-    error = False
-    response = None
-    try:
-        docker_cli = docker.APIClient()
-        image = 'click2cloud/nodejs-10'
-        get_pull_images = docker_cli.images(image)
-        if get_pull_images != []:
-            remove_pull_image = docker_cli.remove_image(image)
-
-    except docker.errors.APIError as e:
-        error = True
-        response = e.message
-
-    except Exception as e:
-        error = True
-        response = e.message
-    finally:
-        return error, response
