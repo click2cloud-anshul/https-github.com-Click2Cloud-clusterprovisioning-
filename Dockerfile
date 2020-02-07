@@ -38,7 +38,7 @@ RUN set -ex \
     device-mapper-persistent-data \
     lvm2 \
     git \
-    docker-ce \
+    docker-ce-cli \
     "\
     && yum install -y $RUNTIME_DEPS \
     && yum install -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False $BUILD_DEPS \
