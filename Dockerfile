@@ -52,7 +52,7 @@ RUN set -ex \
 
 
 # Copy your application code to the container and configuration files
-RUN mkdir -p /usr/src/app/cluster-provisioner/ && mkdir -p /var/log/cluster-provisioner/
+RUN mkdir -p /usr/src/app/cluster-provisioner/
 WORKDIR /usr/src/app/cluster-provisioner/
 COPY . /usr/src/app/cluster-provisioner/
 RUN mv /usr/src/app/cluster-provisioner/dependency/binaries/s2i /usr/local/bin/
@@ -75,9 +75,6 @@ ENV UWSGI_VIRTUALENV=/venv UWSGI_HTTP=:8000 UWSGI_MASTER=1 UWSGI_HTTP_AUTO_CHUNK
 
 # Number of uWSGI workers and threads per worker (customize as needed):
 ENV UWSGI_WORKERS=2 UWSGI_THREADS=4
-
-# Tell uWSGI where to put logs: (separate access log from other log)
-ENV UWSGI_REQ_LOGGER=file:/var/log/cluster-provisioner/requests.log UWSGI_LOGGER=file:/var/log/cluster-provisioner/app.log
 
 # Start uWSGI
 CMD ["/venv/bin/uwsgi", "--show-config"]
