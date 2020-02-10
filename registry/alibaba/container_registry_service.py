@@ -7,16 +7,15 @@ from aliyunsdkcr.request.v20160607 import CreateNamespaceRequest, GetNamespaceLi
 
 
 class Alibaba_CRS:
-    def __init__(self, ali_access_key, ali_secret_key, region_id):
+    def __init__(self, ali_access_key, ali_secret_key):
         """
         constructor for the Alibaba_CRS class
         :param ali_access_key:
         :param ali_secret_key:
-        :param region_id:
         """
         self.access_key = ali_access_key
         self.secret_key = ali_secret_key
-        self.region_id = region_id
+        self.region_id = "cr.ap-south-1.aliyuncs.com"
 
     def create_namespace_request(self, namespace):
         """
@@ -29,22 +28,27 @@ class Alibaba_CRS:
         try:
             client = AcsClient(self.access_key, self.secret_key, self.region_id)
 
-            client_request = CreateNamespaceRequest.CreateNamespaceRequest()
-            client_request.set_endpoint("cr.%s.aliyuncs.com" % self.region_id)
+            client_create_namespace_request = CreateNamespaceRequest.CreateNamespaceRequest()
+            client_create_namespace_request.set_endpoint(self.region_id)
             body = """{
                     "Namespace": {
                         "Namespace": '%s',
                     }
                 }""" % (namespace)
-            client_request.set_content(body)
-            client_response = client.do_action_with_exception(client_request)
+            client_create_namespace_request.set_content(body)
+            client_response = client.do_action_with_exception(client_create_namespace_request)
             response = json.loads(client_response)
         except ServerException as e:
             error = True
-            response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
-            if response == '':
-                response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
-                    'code')
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                if response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                else:
+                    response = e.message
         except ClientException as e:
             error = True
             if 'Max retries exceeded' in str(e.message):
@@ -68,7 +72,7 @@ class Alibaba_CRS:
         try:
             client = AcsClient(self.access_key, self.secret_key, self.region_id)
             client_request = GetNamespaceListRequest.GetNamespaceListRequest()
-            client_request.set_endpoint("cr.%s.aliyuncs.com" % self.region_id)
+            client_request.set_endpoint(self.region_id)
             namespace_list = []
             client_response = client.do_action_with_exception(client_request)
             response_namespace_list = json.loads(client_response)
@@ -77,7 +81,7 @@ class Alibaba_CRS:
                     response_list_of_namespaces = response_namespace_list.get('data').get('namespaces')
                     for response_namespace in response_list_of_namespaces:
                         namespace_request = GetNamespaceRequest.GetNamespaceRequest()
-                        namespace_request.set_endpoint("cr.%s.aliyuncs.com" % self.region_id)
+                        namespace_request.set_endpoint(self.region_id)
                         namespace_request.set_Namespace(response_namespace.get('namespace'))
                         namespace_response = client.do_action_with_exception(namespace_request)
                         namespace_response = json.loads(namespace_response)
@@ -85,10 +89,15 @@ class Alibaba_CRS:
             response = namespace_list
         except ServerException as e:
             error = True
-            response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
-            if response == '':
-                response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
-                    'code')
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                if response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                else:
+                    response = e.message
         except ClientException as e:
             error = True
             if 'Max retries exceeded' in str(e.message):
@@ -112,18 +121,23 @@ class Alibaba_CRS:
         try:
             client = AcsClient(self.access_key, self.secret_key, self.region_id)
 
-            client_request = DeleteNamespaceRequest.DeleteNamespaceRequest()
-            client_request.set_endpoint("cr.%s.aliyuncs.com" % self.region_id)
-            client_request.set_Namespace(namespace)
+            client_delete_namespace_request = DeleteNamespaceRequest.DeleteNamespaceRequest()
+            client_delete_namespace_request.set_endpoint(self.region_id)
+            client_delete_namespace_request.set_Namespace(namespace)
 
-            response_delete_namespace = client.do_action_with_exception(client_request)
+            response_delete_namespace = client.do_action_with_exception(client_delete_namespace_request)
             response = json.loads(response_delete_namespace)
         except ServerException as e:
             error = True
-            response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
-            if response == '':
-                response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
-                    'code')
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                if response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                else:
+                    response = e.message
         except ClientException as e:
             error = True
             if 'Max retries exceeded' in str(e.message):
@@ -149,17 +163,22 @@ class Alibaba_CRS:
             client = AcsClient(self.access_key, self.secret_key, self.region_id)
 
             request_update_namespace = UpdateNamespaceRequest.UpdateNamespaceRequest()
-            request_update_namespace.set_endpoint("cr.%s.aliyuncs.com" % self.region_id)
+            request_update_namespace.set_endpoint(self.region_id)
             request_update_namespace.set_Namespace(namespace)
             request_update_namespace.set_content(json.dumps(request_body))
             response_update_namespace = client.do_action_with_exception(request_update_namespace)
             response = json.loads(response_update_namespace)
         except ServerException as e:
             error = True
-            response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
-            if response == '':
-                response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
-                    'code')
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                if response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                else:
+                    response = e.message
         except ClientException as e:
             error = True
             if 'Max retries exceeded' in str(e.message):
