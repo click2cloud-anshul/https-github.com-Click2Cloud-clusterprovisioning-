@@ -97,26 +97,26 @@ class Azure_CS:
             if hasattr(cluster, 'fqdn'):
                 item['properties']['fqdn'] = cluster.fqdn
             if hasattr(cluster, 'agent_pool_profiles'):
-                if cluster.agent_pool_profiles != None:
+                if cluster.agent_pool_profiles is not None:
                     for agent_profile in cluster.agent_pool_profiles:
-                        agentpool = {}
+                        agent_pool = {}
                         if hasattr(agent_profile, 'name'):
-                            agentpool['name'] = agent_profile.name
+                            agent_pool['name'] = agent_profile.name
                         if hasattr(agent_profile, 'count'):
-                            agentpool['count'] = agent_profile.count
+                            agent_pool['count'] = agent_profile.count
                         if hasattr(agent_profile, 'vm_size'):
-                            agentpool['vmSize'] = agent_profile.vm_size
+                            agent_pool['vmSize'] = agent_profile.vm_size
                         if hasattr(agent_profile, 'max_pods'):
-                            agentpool['maxPods'] = agent_profile.max_pods
+                            agent_pool['maxPods'] = agent_profile.max_pods
                         if hasattr(agent_profile, 'os_type'):
-                            agentpool['osType'] = agent_profile.os_type
+                            agent_pool['osType'] = agent_profile.os_type
                         if hasattr(agent_profile, 'provisioning_state'):
-                            agentpool['provisioningState'] = agent_profile.provisioning_state
+                            agent_pool['provisioningState'] = agent_profile.provisioning_state
                         if hasattr(agent_profile, 'orchestrator_version'):
-                            agentpool['orchestratorVersion'] = agent_profile.orchestrator_version
-                        item['properties']['agentPoolProfiles'].append(agentpool)
+                            agent_pool['orchestratorVersion'] = agent_profile.orchestrator_version
+                        item['properties']['agentPoolProfiles'].append(agent_pool)
             if hasattr(cluster, 'network_profile'):
-                if cluster.network_profile != None:
+                if cluster.network_profile is not None:
                     if hasattr(cluster.network_profile, 'network_plugin'):
                         item['properties']['networkProfile']['networkPlugin'] = cluster.network_profile.network_plugin
                     if hasattr(cluster.network_profile, 'pod_cidr'):
@@ -133,13 +133,13 @@ class Azure_CS:
                 item['properties']['nodeResourceGroup'] = cluster.node_resource_group
 
             if hasattr(cluster, 'linux_profile'):
-                if cluster.linux_profile != None:
+                if cluster.linux_profile is not None:
                     if hasattr(cluster.linux_profile, 'admin_username'):
                         item['properties']['linuxProfile']['adminUsername'] = cluster.linux_profile.admin_username
                     if hasattr(cluster.linux_profile, 'ssh'):
-                        if cluster.linux_profile.ssh != None:
+                        if cluster.linux_profile.ssh is not None:
                             if hasattr(cluster.linux_profile.ssh, 'public_keys'):
-                                if cluster.linux_profile.ssh.public_keys != None:
+                                if cluster.linux_profile.ssh.public_keys is not None:
                                     for publickey in cluster.linux_profile.ssh.public_keys:
                                         ssh_key = {}
                                         ssh_key['keyData'] = publickey.key_data
@@ -183,9 +183,6 @@ class Azure_CS:
             response = e.message
         finally:
             return error, response
-
-
-
 
     # def azure_test(request):
     #

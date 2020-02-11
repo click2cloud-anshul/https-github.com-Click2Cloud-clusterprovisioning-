@@ -11,7 +11,7 @@ import docker
 from aliyunsdkcore.acs_exception.exceptions import ServerException, ClientException
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcr.request.v20160607 import GetNamespaceRequest, DeleteNamespaceRequest, CreateRepoRequest, \
-    DeleteRepoRequest, GetRepoListRequest, UpdateRepoRequest, GetRepoListByNamespaceRequest, CreateNamespaceRequest
+    DeleteRepoRequest, UpdateRepoRequest, GetRepoListByNamespaceRequest, CreateNamespaceRequest
 
 access_key = ''
 secret_key = ''
@@ -349,19 +349,15 @@ def get_repo_list_by_namespace():
         repoList = []
         for namespace in namespace_list:
             repo_dict = {
-                'namespace': '',
+                'namespace': namespace,
                 'repo_list': []
             }
             request = None
             request = GetRepoListByNamespaceRequest.GetRepoListByNamespaceRequest()
             request.set_RepoNamespace(namespace)
             request.set_endpoint("cr.cn-hangzhou.aliyuncs.com")
-            request = None
-            request = GetRepoListRequest.GetRepoListRequest()
-            # request.set_
             response = client.do_action_with_exception(request)
-            repo_dict.update({'namespace': namespace,
-                              'repo_list': json.loads(response).get('data').get('repos')})
+            repo_dict.update({'repo_list': json.loads(response).get('data').get('repos')})
             repoList.append(repo_dict)
         print repoList
     except ServerException as e:

@@ -85,7 +85,8 @@ def key_validations_cluster_provisioning(request_keys, validation_keys):
                     missing_value_flag = True
                     missing_values.append(key)
             elif key in ['region_id', 'cluster_id', 'application_body', 'name', 'namespace', 'application_name',
-                         'cluster_config', 'cluster_name']:
+                         'cluster_config', 'cluster_name', 'repository_name', 'repository_summary',
+                         'repository_detail', 'repository_type']:
                 # checking string length and checking the type of value is string only
                 if (len(str(request_keys.get(key)).strip())) == 0 or not isinstance(request_keys.get(key), unicode):
                     missing_value_flag = True
@@ -222,7 +223,7 @@ def insert_or_update_namespace_details(params):
             response = 'Success'
         else:
             # update operation
-            cmd = "UPDATE public._cb_cp_cluster_details SET status = '{status}', namespace_details = " \
+            cmd = "UPDATE public._cb_cr_namespace_details SET status = '{status}', namespace_details = " \
                   "'{namespace_details}', operation = '{operation}' " \
                   "where user_id = {user_id} and provider_id = {provider_id} and namespace_id = '{namespace_id}' ".format(
                 status=status,
@@ -231,6 +232,61 @@ def insert_or_update_namespace_details(params):
                 user_id=user_id,
                 provider_id=provider_id,
                 namespace_id=namespace_id
+            )
+            cursor.execute(cmd)
+            connection.commit()
+            response = 'Success'
+    except Exception as e:
+        error = True
+        response = e.message
+        print e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return error, response
+
+
+def insert_or_update_repository_details(params):
+    """
+    insert or update the repository details in the database
+    :param params:
+    :return:
+    """
+    cursor = None
+    error = False
+    response = None
+    try:
+        cursor = connection.cursor()
+        user_id = int(params.get('user_id'))
+        provider_id = int(params.get('provider_id'))
+        repository_id = str(params.get('repository_id'))
+        repository_details = str(base64.b64encode(json.dumps(params.get('repository_details'))))
+        status = params.get('status')
+        operation = params.get('operation')
+        if params.get('is_insert'):
+            created_at = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+            cmd = "INSERT INTO public._cb_cr_repository_details(user_id, provider_id, repository_id, repository_details, " \
+                  "status, created_at, operation) VALUES ({user_id},{provider_id},'{repository_id}','{repository_details}'" \
+                  ",'{status}','{created_at}','{operation}')".format(
+                user_id=int(user_id), provider_id=int(provider_id),
+                repository_id=repository_id,
+                repository_details=repository_details,
+                status=status, created_at=created_at,
+                operation=operation)
+            cursor.execute(cmd)
+            connection.commit()
+            response = 'Success'
+        else:
+            # update operation
+            cmd = "UPDATE public._cb_cr_repository_details SET status = '{status}', repository_details = " \
+                  "'{repository_details}', operation = '{operation}' " \
+                  "where user_id = {user_id} and provider_id = {provider_id} and repository_id = '{repository_id}' ".format(
+                status=status,
+                repository_details=repository_details,
+                operation=operation,
+                user_id=user_id,
+                provider_id=provider_id,
+                repository_id=repository_id
             )
             cursor.execute(cmd)
             connection.commit()
