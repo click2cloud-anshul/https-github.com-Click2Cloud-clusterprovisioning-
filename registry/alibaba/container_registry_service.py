@@ -4,7 +4,8 @@ from aliyunsdkcore.acs_exception.exceptions import ServerException, ClientExcept
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcr.request.v20160607 import CreateNamespaceRequest, GetNamespaceListRequest, GetNamespaceRequest, \
     DeleteNamespaceRequest, UpdateNamespaceRequest, CreateRepoRequest, GetRepoListByNamespaceRequest, UpdateRepoRequest, \
-    DeleteRepoRequest
+    DeleteRepoRequest, GetRepoTagsRequest, GetRepoBuildListRequest, GetRepoWebhookRequest, CreateRepoWebhookRequest, \
+    DeleteRepoWebhookRequest
 
 from cluster.alibaba.compute_service import Alibaba_ECS
 
@@ -509,6 +510,250 @@ class Alibaba_CRS:
             error = True
             if 'Max retries exceeded' in str(e.message):
                 response = 'Max retries exceeded, Failed to establish a new connection'
+            else:
+                response = e.message
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def list_all_tags_of_repository(self, region_id, namespace, repository_name):
+        """
+        This method will list all tags belongs to repository
+        :param region_id:
+        :param namespace:
+        :param repository_name:
+        :return:
+        """
+        error = False
+        response = None
+
+        try:
+            client = AcsClient(self.access_key, self.secret_key, "cr.%s.aliyuncs.com" % region_id)
+            request_get_repository_tags = GetRepoTagsRequest.GetRepoTagsRequest()
+            request_get_repository_tags.set_endpoint("cr.%s.aliyuncs.com" % region_id)
+            request_get_repository_tags.set_RepoNamespace(namespace)
+            request_get_repository_tags.set_RepoName(repository_name)
+            response_get_repository_tags = client.do_action_with_exception(request_get_repository_tags)
+            response = json.loads(response_get_repository_tags)
+        except ServerException as e:
+            error = True
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                if 'ServerResponseBody' in e.message:
+                    response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                elif response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                elif response is None:
+                    response = e.error_code
+                else:
+                    response = e.message
+        except ClientException as e:
+            error = True
+            if 'Max retries exceeded' in str(e.message):
+                response = 'Max retries exceeded, failed to establish a new connection'
+            else:
+                response = e.message
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def list_all_repository_build(self, region_id, namespace, repository_name):
+        """
+        This method will list all builds belongs to repository
+        :param region_id:
+        :param namespace:
+        :param repository_name:
+        :return:
+        """
+        error = False
+        response = None
+
+        try:
+            client = AcsClient(self.access_key, self.secret_key, "cr.%s.aliyuncs.com" % region_id)
+            request_get_repo_build_list = GetRepoBuildListRequest.GetRepoBuildListRequest()
+            request_get_repo_build_list.set_endpoint("cr.%s.aliyuncs.com" % region_id)
+            request_get_repo_build_list.set_RepoNamespace(namespace)
+            request_get_repo_build_list.set_RepoName(repository_name)
+            response_get_repo_build_list = client.do_action_with_exception(request_get_repo_build_list)
+            response = json.loads(response_get_repo_build_list)
+        except ServerException as e:
+            error = True
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                if 'ServerResponseBody' in e.message:
+                    response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                elif response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                elif response is None:
+                    response = e.error_code
+                else:
+                    response = e.message
+        except ClientException as e:
+            error = True
+            if 'Max retries exceeded' in str(e.message):
+                response = 'Max retries exceeded, failed to establish a new connection'
+            else:
+                response = e.message
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_repo_webhook_request(self, region_id, namespace, repository_name):
+        """
+        This method will return webhooks belongs to repository
+        :param region_id:
+        :param namespace:
+        :param repository_name:
+        :return:
+        """
+        error = False
+        response = None
+
+        try:
+            client = AcsClient(self.access_key, self.secret_key, "cr.%s.aliyuncs.com" % region_id)
+            request_get_repo_webhook_request = GetRepoWebhookRequest.GetRepoWebhookRequest()
+            request_get_repo_webhook_request.set_endpoint("cr.%s.aliyuncs.com" % region_id)
+            request_get_repo_webhook_request.set_RepoNamespace(namespace)
+            request_get_repo_webhook_request.set_RepoName(repository_name)
+            response_get_repo_webhook_request = client.do_action_with_exception(request_get_repo_webhook_request)
+            response = json.loads(response_get_repo_webhook_request)
+        except ServerException as e:
+            error = True
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                if 'ServerResponseBody' in e.message:
+                    response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                elif response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                elif response is None:
+                    response = e.error_code
+                else:
+                    response = e.message
+        except ClientException as e:
+            error = True
+            if 'Max retries exceeded' in str(e.message):
+                response = 'Max retries exceeded, failed to establish a new connection'
+            else:
+                response = e.message
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def create_repo_webhook_request(self, region_id, namespace, repository_name, trigger_type, webhook_url,
+                                    webhook_name, trigger_tag_list):
+        """
+        This method will creates webhook to repository
+        :param region_id:
+        :param namespace:
+        :param repository_name:
+        :param trigger_type:
+        :param webhook_url:
+        :param webhook_name:
+        :return:
+        """
+        error = False
+        response = None
+
+        try:
+            client = AcsClient(self.access_key, self.secret_key, "cr.%s.aliyuncs.com" % region_id)
+            request_create_repo_webhook_request = CreateRepoWebhookRequest.CreateRepoWebhookRequest()
+            request_create_repo_webhook_request.set_endpoint("cr.%s.aliyuncs.com" % region_id)
+            request_create_repo_webhook_request.set_RepoNamespace(namespace)
+            request_create_repo_webhook_request.set_RepoName(repository_name)
+            new_trigger_tag_list = []
+            for tag in trigger_tag_list:
+                new_trigger_tag_list.append(str(tag))
+            body = """{
+    "Webhook": {
+        "WebhookName": "%s",
+        "WebhookUrl": "%s",
+        "TriggerType": "%s",
+        "TriggerTag": %s
+    }
+}""" % (webhook_name, webhook_url, trigger_type, new_trigger_tag_list)
+            request_create_repo_webhook_request.set_content(body.encode('utf-8'))
+            response_create_repo_webhook_request = client.do_action_with_exception(request_create_repo_webhook_request)
+            response = json.loads(response_create_repo_webhook_request)
+        except ServerException as e:
+            error = True
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                if 'ServerResponseBody' in e.message:
+                    response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                elif response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                elif response is None:
+                    response = e.error_code
+                else:
+                    response = e.message
+        except ClientException as e:
+            error = True
+            if 'Max retries exceeded' in str(e.message):
+                response = 'Max retries exceeded, failed to establish a new connection'
+            else:
+                response = e.message
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def delete_repo_webhook_request(self, region_id, namespace, repository_name, webhook_id):
+        """
+        This method will delete webhook to repository
+        :param region_id:
+        :param namespace:
+        :param repository_name:
+        :param webhook_id:
+        :return:
+        """
+        error = False
+        response = None
+
+        try:
+            client = AcsClient(self.access_key, self.secret_key, "cr.%s.aliyuncs.com" % region_id)
+            request_delete_repo_webhook_request = DeleteRepoWebhookRequest.DeleteRepoWebhookRequest()
+            request_delete_repo_webhook_request.set_endpoint("cr.%s.aliyuncs.com" % region_id)
+            request_delete_repo_webhook_request.set_RepoNamespace(namespace)
+            request_delete_repo_webhook_request.set_RepoName(repository_name)
+            request_delete_repo_webhook_request.set_WebhookId(str(webhook_id))
+
+            response_delete_repo_webhook_request = client.do_action_with_exception(request_delete_repo_webhook_request)
+            response = json.loads(response_delete_repo_webhook_request)
+        except ServerException as e:
+            error = True
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                if 'ServerResponseBody' in e.message:
+                    response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                elif response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                elif response is None:
+                    response = e.error_code
+                else:
+                    response = e.message
+        except ClientException as e:
+            error = True
+            if 'Max retries exceeded' in str(e.message):
+                response = 'Max retries exceeded, failed to establish a new connection'
             else:
                 response = e.message
         except Exception as e:

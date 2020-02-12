@@ -67,7 +67,6 @@ def alibaba_create_namespace(request):
                         if error_insert_or_update_namespace_details:
                             raise Exception('Namespace created but error while inserting data into database')
                     else:
-                        # application creation failed.
                         raise Exception(response_create_namespace)
                 else:
                     # if provider_id is not present in credentials
@@ -87,7 +86,7 @@ def alibaba_create_namespace(request):
         return JsonResponse(api_response, safe=False)
 
 
-@api_view(['POST'])
+@api_view(['DELETE'])
 def alibaba_delete_namespace(request):
     """
     Delete the namespace on the alibaba container registry
@@ -141,7 +140,6 @@ def alibaba_delete_namespace(request):
                         if error_insert_or_update_namespace_details:
                             raise Exception('Namespace deleted but error while inserting data into database')
                     else:
-                        # application creation failed.
                         raise Exception(response_delete_namespace)
                 else:
                     # if provider_id is not present in credentials
@@ -268,7 +266,6 @@ def alibaba_update_namespace(request):
                         namespace,
                         request_body)
                     if error_update_namespace_request:
-                        # application creation failed.
                         raise Exception(response_update_namespace_request)
                 else:
                     # if provider_id is not present in credentials
@@ -360,7 +357,6 @@ def alibaba_create_repository(request):
                         if error_insert_or_update_repository_details:
                             raise Exception('Repository created but error while inserting data into database')
                     else:
-                        # application creation failed.
                         raise Exception(response_create_repository_request)
                 else:
                     # if provider_id is not present in credentials
@@ -643,6 +639,192 @@ def alibaba_update_repository(request):
 
 
 @api_view(['POST'])
+def alibaba_list_all_tags_of_repository(request):
+    """
+    Provides repository tags
+    :param request:
+    :return:
+    """
+    api_response = {
+        'is_successful': True,
+        'tag_list_details': None,
+        'error': None
+    }
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'namespace', 'repository_name', 'region_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if not error_key_validations_cluster_provisioning:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            namespace = json_request.get('namespace')
+            repository_name = json_request.get('repository_name')
+            region_id = json_request.get('region_id')
+            # Fetching access keys and secret keys from db
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
+            if not error_get_access_key_secret_key_list:
+                error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
+                    provider_id, response_get_access_key_secret_key_list)
+                if not error_check_for_provider_id:
+                    # if provider_id present in credentials from database
+                    alibaba_crs = Alibaba_CRS(
+                        ali_access_key=response_check_for_provider_id.get('client_id'),
+                        ali_secret_key=response_check_for_provider_id.get('client_secret')
+                    )
+                    error_list_all_tags_of_repository, response_list_all_tags_of_repository = alibaba_crs.list_all_tags_of_repository(
+                        namespace=namespace, repository_name=repository_name, region_id=region_id)
+
+                    if not error_list_all_tags_of_repository:
+                        api_response.update({'tag_list_details': response_list_all_tags_of_repository})
+                    else:
+                        raise Exception(response_list_all_tags_of_repository)
+
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response_check_for_provider_id)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response_get_access_key_secret_key_list)
+        else:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def alibaba_get_repo_build_list(request):
+    """
+    Provides repository build list
+    :param request:
+    :return:
+    """
+    api_response = {
+        'is_successful': True,
+        'build_list_details': None,
+        'error': None
+    }
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'namespace', 'repository_name', 'region_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if not error_key_validations_cluster_provisioning:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            namespace = json_request.get('namespace')
+            repository_name = json_request.get('repository_name')
+            region_id = json_request.get('region_id')
+            # Fetching access keys and secret keys from db
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
+            if not error_get_access_key_secret_key_list:
+                error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
+                    provider_id, response_get_access_key_secret_key_list)
+                if not error_check_for_provider_id:
+                    # if provider_id present in credentials from database
+                    alibaba_crs = Alibaba_CRS(
+                        ali_access_key=response_check_for_provider_id.get('client_id'),
+                        ali_secret_key=response_check_for_provider_id.get('client_secret')
+                    )
+                    error_list_all_build_of_repository, response_list_all_build_of_repository = alibaba_crs.list_all_repository_build(
+                        namespace=namespace, repository_name=repository_name, region_id=region_id)
+
+                    if not error_list_all_build_of_repository:
+                        api_response.update({'build_list_details': response_list_all_build_of_repository})
+                    else:
+                        raise Exception(response_list_all_build_of_repository)
+
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response_check_for_provider_id)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response_get_access_key_secret_key_list)
+        else:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def alibaba_get_repo_webhook_request(request):
+    """
+    Provides repository webhook
+    :param request:
+    :return:
+    """
+    api_response = {
+        'is_successful': True,
+        'webhook_details': None,
+        'error': None
+    }
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'namespace', 'repository_name', 'region_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if not error_key_validations_cluster_provisioning:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            namespace = json_request.get('namespace')
+            repository_name = json_request.get('repository_name')
+            region_id = json_request.get('region_id')
+            # Fetching access keys and secret keys from db
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
+            if not error_get_access_key_secret_key_list:
+                error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
+                    provider_id, response_get_access_key_secret_key_list)
+                if not error_check_for_provider_id:
+                    # if provider_id present in credentials from database
+                    alibaba_crs = Alibaba_CRS(
+                        ali_access_key=response_check_for_provider_id.get('client_id'),
+                        ali_secret_key=response_check_for_provider_id.get('client_secret')
+                    )
+                    error_get_repo_webhook_request, response_get_repo_webhook_request = alibaba_crs.get_repo_webhook_request(
+                        namespace=namespace, repository_name=repository_name, region_id=region_id)
+
+                    if not error_get_repo_webhook_request:
+                        api_response.update({'webhook_details': response_get_repo_webhook_request})
+                    else:
+                        raise Exception(response_get_repo_webhook_request)
+
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response_check_for_provider_id)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response_get_access_key_secret_key_list)
+        else:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['DELETE'])
 def alibaba_delete_repository(request):
     """
     Delete the repository on the alibaba container registry
@@ -699,6 +881,135 @@ def alibaba_delete_repository(request):
                     else:
                         raise Exception(response_delete_repository_request)
 
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response_check_for_provider_id)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response_get_access_key_secret_key_list)
+        else:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def alibaba_create_repo_webhook_request(request):
+    """
+    Creates repository webhook
+    :param request:
+    :return:
+    """
+    api_response = {
+        'is_successful': True,
+        'webhook_id': None,
+        'error': None
+    }
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'namespace', 'repository_name', 'region_id', 'webhook_name',
+                           'trigger_type', 'webhook_url', 'trigger_tag_list']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if not error_key_validations_cluster_provisioning:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            namespace = json_request.get('namespace')
+            repository_name = json_request.get('repository_name')
+            region_id = json_request.get('region_id')
+            trigger_type = json_request.get('trigger_type')
+            webhook_url = json_request.get('webhook_url')
+            webhook_name = json_request.get('webhook_name')
+            trigger_tag_list = json_request.get('trigger_tag_list')
+            # Fetching access keys and secret keys from db
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
+            if not error_get_access_key_secret_key_list:
+                error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
+                    provider_id, response_get_access_key_secret_key_list)
+                if not error_check_for_provider_id:
+                    # if provider_id present in credentials from database
+                    alibaba_crs = Alibaba_CRS(
+                        ali_access_key=response_check_for_provider_id.get('client_id'),
+                        ali_secret_key=response_check_for_provider_id.get('client_secret')
+                    )
+                    error_create_repo_webhook, response_create_repo_webhook = alibaba_crs.create_repo_webhook_request(
+                        namespace=namespace, repository_name=repository_name, region_id=region_id,
+                        trigger_type=trigger_type, webhook_url=webhook_url, webhook_name=webhook_name,
+                        trigger_tag_list=trigger_tag_list)
+
+                    if not error_create_repo_webhook:
+                        api_response.update({'webhook_id': response_create_repo_webhook.get('data').get('webhookId')})
+                    else:
+                        raise Exception(response_create_repo_webhook)
+
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response_check_for_provider_id)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response_get_access_key_secret_key_list)
+        else:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def alibaba_delete_repo_webhook_request(request):
+    """
+    Delete repository webhook
+    :param request:
+    :return:
+    """
+    api_response = {
+        'is_successful': True,
+        'error': None
+    }
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'namespace', 'repository_name', 'region_id', 'webhook_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if not error_key_validations_cluster_provisioning:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            namespace = json_request.get('namespace')
+            repository_name = json_request.get('repository_name')
+            region_id = json_request.get('region_id')
+            webhook_id = json_request.get('webhook_id')
+            # Fetching access keys and secret keys from db
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
+            if not error_get_access_key_secret_key_list:
+                error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
+                    provider_id, response_get_access_key_secret_key_list)
+                if not error_check_for_provider_id:
+                    # if provider_id present in credentials from database
+                    alibaba_crs = Alibaba_CRS(
+                        ali_access_key=response_check_for_provider_id.get('client_id'),
+                        ali_secret_key=response_check_for_provider_id.get('client_secret')
+                    )
+                    error_delete_repo_webhook, response_delete_repo_webhook = alibaba_crs.delete_repo_webhook_request(
+                        namespace=namespace, repository_name=repository_name, region_id=region_id,
+                        webhook_id=webhook_id)
+
+                    if error_delete_repo_webhook:
+                        raise Exception(response_delete_repo_webhook)
                 else:
                     # if provider_id is not present in credentials
                     raise Exception(response_check_for_provider_id)
