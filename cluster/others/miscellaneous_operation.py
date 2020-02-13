@@ -86,7 +86,8 @@ def key_validations_cluster_provisioning(request_keys, validation_keys):
                     missing_values.append(key)
             elif key in ['region_id', 'cluster_id', 'application_body', 'name', 'namespace', 'application_name',
                          'cluster_config', 'cluster_name', 'repository_name', 'repository_summary',
-                         'repository_detail', 'repository_type', 'webhook_name', 'webhook_url', 'trigger_type']:
+                         'repository_detail', 'repository_type', 'webhook_name', 'webhook_url', 'trigger_type',
+                         'tag_name']:
                 # checking string length and checking the type of value is string only
                 if (len(str(request_keys.get(key)).strip())) == 0 or not isinstance(request_keys.get(key), unicode):
                     missing_value_flag = True
