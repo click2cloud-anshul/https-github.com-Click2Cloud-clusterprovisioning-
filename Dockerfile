@@ -40,8 +40,8 @@ RUN set -ex \
     git \
     docker-ce-cli \
     "\
-    && yum install -y $RUNTIME_DEPS \
     && yum install -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False $BUILD_DEPS \
+    && yum install -y $RUNTIME_DEPS \
     && pip install virtualenv \
     && virtualenv /venv \
     && /venv/bin/pip install -U pip \
@@ -58,8 +58,8 @@ COPY . /usr/src/app/cluster-provisioner/
 RUN mv /usr/src/app/cluster-provisioner/dependency/binaries/s2i /usr/local/bin/
 RUN chmod -R 777 /usr/src/app/*
 
-# Permission denied issue occurs
-RUN chmod 777 /usr/local/bin/s2i
+# Executable permissions given for s2i
+RUN chmod +x /usr/local/bin/s2i
 
 # uWSGI will listen on this port
 EXPOSE 8000
@@ -75,6 +75,10 @@ ENV UWSGI_VIRTUALENV=/venv UWSGI_HTTP=:8000 UWSGI_MASTER=1 UWSGI_HTTP_AUTO_CHUNK
 
 # Number of uWSGI workers and threads per worker (customize as needed):
 ENV UWSGI_WORKERS=2 UWSGI_THREADS=4
+
+# to run any sub-process from virtualenv like openstack,etc
+ENV VIRTUAL_ENV=/venv
+ENV PATH="/venv/bin:$PATH"
 
 # Start uWSGI
 CMD ["/venv/bin/uwsgi", "--show-config"]
