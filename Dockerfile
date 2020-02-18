@@ -42,6 +42,7 @@ RUN set -ex \
     "\
     && yum install -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False $BUILD_DEPS \
     && yum install -y $RUNTIME_DEPS \
+    && pip install --upgrade pip \
     && pip install virtualenv \
     && virtualenv /venv \
     && /venv/bin/pip install -U pip \
