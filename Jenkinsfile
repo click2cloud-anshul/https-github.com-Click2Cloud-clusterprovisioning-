@@ -27,7 +27,7 @@ pipeline {
                 expression { params.selection == 'branch' }
             }
             steps {                
-                git url: "$git_url", branch: "${selection_value}", credentialsId: 'git-tathagatk22' 
+                git url: "$git_url", branch: "${selection_value}", credentialsId: 'git-tathagat-c2c'
             }
         }
         stage('Git checkout from Commit') {
