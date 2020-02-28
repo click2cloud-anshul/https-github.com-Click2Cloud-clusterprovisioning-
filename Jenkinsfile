@@ -51,12 +51,12 @@ pipeline {
         // }
         stage('Building image') {
             environment {
-              COMMIT = sh 'echo "COMMIT=$(git rev-parse --short HEAD)"'
-              BRANCH = sh 'echo "BRANCH=$(git rev-parse --abbrev-ref HEAD)"'
-          }
+                COMMIT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                BRANCH = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+            }
             steps{
                 script {
-                    dockerImage = docker.build("$registry:$BRANCH", "--build-arg COMMIT=${COMMIT}  --build-arg BRANCH=${BRANCH} -f Dockerfile ." )
+                    dockerImage = docker.build("$registry:${BRANCH}", "--build-arg COMMIT=${COMMIT}  --build-arg BRANCH=${BRANCH} -f Dockerfile ." )
                 }
             }
         }
@@ -70,8 +70,11 @@ pipeline {
             }
         }
         stage('Delete Image') {
+            environment {
+                BRANCH = sh(script: 'git rev-parse --abbrev-ref HEAD', , returnStdout: true).trim()
+            }
             steps{
-                sh "docker rmi $registry:$BRANCH"
+                sh "docker rmi $registry:${BRANCH}"
             }
         }
     }
