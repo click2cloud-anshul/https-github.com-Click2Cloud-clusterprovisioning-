@@ -65,15 +65,11 @@ def alibaba_region_list(request):
                                                      'region_list': region_list,
                                                      'error': None})
                             else:
-                                api_response.update({'is_successful': flag,
-                                                     'error': 'Error occurred while fetching the region list'})
-                                break
+                                raise Exception('Error occurred while fetching the region list')
                 if access_flag:
-                    api_response.update({'is_successful': False,
-                                         'error': 'Invalid provider_id or no data available.'})
+                    raise Exception('Invalid provider_id or no data available.')
             else:
-                api_response.update({'is_successful': False,
-                                     'error': 'Invalid user_id or no data available.'})
+                raise Exception('Invalid user_id or no data available.')
 
     except Exception as e:
         api_response.update({
@@ -559,9 +555,7 @@ def alibaba_list_repository_by_provider(request):
                                 'all_repository_list': response_list_repository})
                         else:
                             # skip if any error occurred for a particular key
-                            api_response.update({
-                                'all_repository_list': [],
-                                'error': response_list_repository})
+                            raise Exception(response_list_repository)
                     else:
                         # if provider_id is not present in credentials
                         raise Exception(response_check_for_provider_id)
@@ -632,9 +626,7 @@ def alibaba_list_repository_by_namespace(request):
                                 'all_repository_list': response_list_repository})
                         else:
                             # skip if any error occurred for a particular key
-                            api_response.update({
-                                'all_repository_list': [],
-                                'error': response_list_repository})
+                            raise Exception(response_list_repository)
                     else:
                         # if provider_id is not present in credentials
                         raise Exception(response_check_for_provider_id)
