@@ -26,4 +26,5 @@ urlpatterns = [
     url(r'^alibaba/update-repository-webhook$', views.alibaba_update_repository_webhook_request),
 
     url(r'^alibaba/list-providers$', views.alibaba_list_providers),
+    url(r'^alibaba/list-regions', views.alibaba_region_list),
 ]
