@@ -124,7 +124,7 @@ class Alibaba_CS:
 
             request.add_query_param('RegionId', "default")
             request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters/' + cluster_id)
+            request.set_uri_pattern('/clusters/%s' % cluster_id)
             body = ''''''
             request.set_content(body.encode('utf-8'))
 
@@ -385,7 +385,7 @@ class Alibaba_CS:
             request.set_version('2015-12-15')
             request.add_query_param('RegionId', "default")
             request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/api/v2/k8s/' + cluster_id + '/user_config')
+            request.set_uri_pattern('/api/v2/k8s/%s/user_config' % cluster_id)
             body = ''''''
             request.set_content(body.encode('utf-8'))
             response = client.do_action_with_exception(request)
@@ -423,7 +423,7 @@ class Alibaba_CS:
             request.set_version('2015-12-15')
             request.add_query_param('RegionId', "default")
             request.add_header('Content-Type', 'application/json')
-            request.set_uri_pattern('/clusters/' + cluster_id + '/endpoints')
+            request.set_uri_pattern('/clusters/%s/endpoints' % cluster_id)
             body = ''''''
             request.set_content(body.encode('utf-8'))
             response = client.do_action_with_exception(request)

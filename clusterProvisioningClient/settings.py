@@ -25,7 +25,7 @@ load_dotenv(dotenv_path)
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-decrypt_credentials_api_endpoint = os.getenv("CB_Node_Service") + '/api/v1/decryptCredentials'
+decrypt_credentials_api_endpoint = os.getenv("CB_Node_Service%s") % '/api/v1/decryptCredentials'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/

@@ -234,7 +234,7 @@ class Alibaba_ECS:
                     request = DescribeInstanceTypesRequest()
                     request.set_accept_format('json')
 
-                    request.set_InstanceTypeFamily('ecs.' + instance_type_family)
+                    request.set_InstanceTypeFamily('ecs.%s' % instance_type_family)
 
                     response = client.do_action_with_exception(request)
                     instance_new_list = []
