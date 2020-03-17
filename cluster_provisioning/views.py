@@ -62,7 +62,7 @@ def alibaba_region_list(request):
                                 ali_secret_key=access_key_secret_key.get('client_secret'),
                                 region_id='default'
                             )
-                            flag, region_list = alibaba_ecs.list_regions()
+                            flag, region_list = alibaba_ecs.list_container_service_regions()
 
                             if flag:
                                 api_response.update({'is_successful': flag,
@@ -70,7 +70,7 @@ def alibaba_region_list(request):
                                                      'error': None})
                             else:
                                 api_response.update({'is_successful': flag,
-                                                     'error': 'Error occured while fetching the region list'})
+                                                     'error': 'Error occurred while fetching the region list'})
                                 break
                 if access_flag:
                     api_response.update({'is_successful': False,
@@ -3164,7 +3164,7 @@ def azure_region_list(request):
 
                             if flag:
                                 api_response.update({'is_successful': flag,
-                                                     'error': 'Error occured while fetching the resource group list'})
+                                                     'error': 'Error occurred while fetching the resource group list'})
                                 break
                             else:
                                 api_response.update({'is_successful': flag,
@@ -3236,7 +3236,7 @@ def azure_resource_group_list(request):
                             flag, resource_group_list = azure_Compute_Service.resource_group_list()
                             if flag:
                                 api_response.update({'is_successful': flag,
-                                                     'error': 'Error occured while fetching the region list'})
+                                                     'error': 'Error occurred while fetching the region list'})
                                 break
                             else:
                                 api_response.update({'is_successful': flag,
@@ -3309,7 +3309,7 @@ def azure_instance_type_list(request):
                                 location=json_request.get('region_id'))
                             if flag:
                                 api_response.update({'is_successful': flag,
-                                                     'error': 'Error occured while fetching the instance type list'})
+                                                     'error': 'Error occurred while fetching the instance type list'})
                                 break
                             else:
                                 api_response.update({'is_successful': flag,
@@ -3383,7 +3383,7 @@ def azure_virtual_network_details(request):
                                 location=json_request.get('region_id'))
                             if flag:
                                 api_response.update({'is_successful': flag,
-                                                     'error': 'Error occured while fetching the virtual network details'})
+                                                     'error': 'Error occurred while fetching the virtual network details'})
                                 break
                             else:
                                 api_response.update({'is_successful': flag,

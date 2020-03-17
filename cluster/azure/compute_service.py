@@ -164,7 +164,7 @@ class Azure_Compute_Service:
                         for s in vn.subnets:
                             subnet = {}
                             if hasattr(s, 'name') and hasattr(s, 'address_prefix'):
-                                subnet = {'name': s.name + '(' + s.address_prefix + ')'}
+                                subnet = {'name': '%s(%s)' % (s.name, s.address_prefix)}
                                 subnet_list.append(subnet)
                         virtual_network.update({'subnet': subnet_list})
                         virtual_network_list.append(virtual_network)

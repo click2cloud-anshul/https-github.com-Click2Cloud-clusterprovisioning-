@@ -243,11 +243,11 @@ class Kubernetes_Operations(object):
                     try:
 
                         if isinstance(exception, KeyError):
-                            response = 'Key is missing ' + exception.message
+                            response = 'Key is missing %s' % exception.message
                         elif isinstance(exception, TypeError):
                             response = 'Invalid YAML/JSON provided'
                         elif isinstance(exception, ValueError):
-                            response = 'Value is missing ' + exception.message
+                            response = 'Value is missing %s' % exception.message
                         elif isinstance(exception, FailToCreateError):
                             # response_dict.update({'error': e.api_exceptions})
                             api_exception_list = exception.api_exceptions
@@ -454,14 +454,14 @@ class Kubernetes_Operations(object):
         try:
             url = '%s/apis/rbac.authorization.k8s.io/v1/roles' % cluster_url
             headers = {
-                'Authorization': 'Bearer ' + token,
+                'Authorization': 'Bearer %s' % token,
             }
             response = requests.request('GET', url, headers=headers, verify=False)
             if response.status_code != 200:
                 raise Exception('for url %s : %s' % (url, json.loads(response.text).get('message')))
             url = '%s/apis/rbac.authorization.k8s.io/v1/clusterroles' % cluster_url
             headers = {
-                'Authorization': 'Bearer ' + token,
+                'Authorization': 'Bearer %s' % token,
             }
             response_cluster_roles = requests.request('GET', url, headers=headers, verify=False)
             if response_cluster_roles.status_code != 200:
@@ -998,8 +998,7 @@ class Kubernetes_Operations(object):
                 node_name = node.metadata.name
                 allocatable = node.status.allocatable
                 max_pods = int(int(allocatable.get('pods')) * 1.5)
-                field_selector = ('status.phase!=Succeeded,status.phase!=Failed,' +
-                                  'spec.nodeName=' + node_name)
+                field_selector = ('status.phase!=Succeeded,status.phase!=Failed,spec.nodeName=%s' % node_name)
                 pods = self.clientCoreV1.list_pod_for_all_namespaces(limit=max_pods,
                                                                      field_selector=field_selector).items
                 # compute the allocated resources

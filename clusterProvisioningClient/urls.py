@@ -22,7 +22,8 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^api/common/', include('common.urls')),
     url(r'^cluster-provisioning/', include('cluster_provisioning.urls')),
-    url(r'^cluster-provisioning/', include('source_to_image.urls'))
+    url(r'^cluster-provisioning/', include('source_to_image.urls')),
+    url(r'^container-registry-provisioning/', include('registry_provisioning.urls'))
 
 ]
 

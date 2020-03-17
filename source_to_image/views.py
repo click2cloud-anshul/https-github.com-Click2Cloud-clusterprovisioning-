@@ -156,8 +156,8 @@ def delete_new_image(docker_cli, new_image):
     response = None
     try:
         get_pull_images = docker_cli.images(new_image)
-        if get_pull_images != []:
-            remove_pull_image = docker_cli.remove_image(new_image)
+        if get_pull_images:
+            docker_cli.remove_image(new_image)
     except Exception as e:
         error = True
         response = e.message
@@ -176,8 +176,8 @@ def delete_tag_image(docker_cli, tag_image):
     response = None
     try:
         get_pull_images = docker_cli.images(tag_image)
-        if get_pull_images != []:
-            remove_pull_image = docker_cli.remove_image(tag_image)
+        if get_pull_images:
+            docker_cli.remove_image(tag_image)
     except Exception as e:
         error = True
         response = e.message
@@ -199,7 +199,7 @@ def after_response_create_image(json_request):
         # output, info = docker_version.communicate()
         # print "output \n %s" % output
         # print "info \n %s" % info
-        dockercli = docker.APIClient()
+        docker_cli = docker.APIClient()
         github_username = ''
         github_password = ''
         registry_username = json_request.get('registry_username')
@@ -253,32 +253,20 @@ def after_response_create_image(json_request):
                                      'status': 'Failed',
                                      'comment': 'Error while updating the data'})
                 insert_or_update_s2i_details(json_request, record_unique_id)
-            # error, response = delete_builder_image(dockercli, builder_image)
-            # if error:
-            #     json_request.update({'is_insert': False,
-            #                          'status': 'Failed',
-            #                          'comment': 'Error while deleting the builder image'})
-            #     insert_or_update_s2i_details(json_request, record_unique_id)
         else:
             json_request.update({'is_insert': False,
                                  'status': 'In-Progress',
                                  'comment': 'Build completed successfully'})
             insert_or_update_s2i_details(json_request, record_unique_id)
-            tag_image = dockercli.tag(image=new_image_name, repository=registry, tag=tag)
+            tag_image = docker_cli.tag(image=new_image_name, repository=registry, tag=tag)
 
             if not tag_image:
                 json_request.update({'is_insert': False,
                                      'status': 'Failed',
                                      'comment': 'Error while tagging the image'})
                 insert_or_update_s2i_details(json_request, record_unique_id)
-                # error, response = delete_builder_image(dockercli, builder_image)
-                # if error:
-                #     json_request.update({'is_insert': False,
-                #                          'status': 'Failed',
-                #                          'comment': 'Error while deleting the builder image'})
-                #     insert_or_update_s2i_details(json_request, record_unique_id)
 
-                error, response = delete_new_image(dockercli, new_image_name)
+                error, response = delete_new_image(docker_cli, new_image_name)
                 if error:
                     json_request.update({'is_insert': False,
                                          'status': 'Failed',
@@ -290,7 +278,7 @@ def after_response_create_image(json_request):
                                      'comment': 'Image has been tagged'})
                 insert_or_update_s2i_details(json_request, record_unique_id)
 
-                push_image = dockercli.push(repository=registry, tag=tag, auth_config=auth_config)
+                push_image = docker_cli.push(repository=registry, tag=tag, auth_config=auth_config)
 
                 if 'errorDetail' in push_image:
                     error_partition = push_image.partition('"errorDetail":')[2]
@@ -312,21 +300,14 @@ def after_response_create_image(json_request):
                                          'comment': comment})
                     insert_or_update_s2i_details(json_request, record_unique_id)
 
-                    # error, response = delete_builder_image(dockercli, builder_image)
-                    # if error:
-                    #     json_request.update({'is_insert': False,
-                    #                          'status': 'Failed',
-                    #                          'comment': 'Error while deleting the builder image'})
-                    #     insert_or_update_s2i_details(json_request, record_unique_id)
-
-                    error, response = delete_new_image(dockercli, new_image_name)
+                    error, response = delete_new_image(docker_cli, new_image_name)
                     if error:
                         json_request.update({'is_insert': False,
                                              'status': 'Failed',
                                              'comment': 'Error while deleting the new image'})
                         insert_or_update_s2i_details(json_request, record_unique_id)
 
-                    error, response = delete_tag_image(dockercli, '%s:%s' % (registry, tag))
+                    error, response = delete_tag_image(docker_cli, '%s:%s' % (registry, tag))
                     if error:
                         json_request.update({'is_insert': False,
                                              'status': 'Failed',
@@ -340,14 +321,14 @@ def after_response_create_image(json_request):
                                          'comment': 'Image has been pushed'})
                     insert_or_update_s2i_details(json_request, record_unique_id)
 
-                    error, response = delete_new_image(dockercli, new_image_name)
+                    error, response = delete_new_image(docker_cli, new_image_name)
                     if error:
                         json_request.update({'is_insert': False,
                                              'status': 'Failed',
                                              'comment': 'Error while deleting the new image'})
                         insert_or_update_s2i_details(json_request, record_unique_id)
 
-                    error, response = delete_tag_image(dockercli, '%s:%s' % (registry, tag))
+                    error, response = delete_tag_image(docker_cli, '%s:%s' % (registry, tag))
                     if error:
                         json_request.update({'is_insert': False,
                                              'status': 'Failed',

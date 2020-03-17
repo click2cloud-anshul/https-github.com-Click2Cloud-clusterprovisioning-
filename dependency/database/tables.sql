@@ -35,3 +35,24 @@ CREATE TABLE IF NOT EXISTS _cb_cp_s2i_details
     registry text NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS _cb_cr_namespace_details(
+	id serial NOT NULL PRIMARY KEY,
+	user_id integer,
+	provider_id integer,
+	namespace_id text,
+	namespace_details text,
+	status text,
+	created_at text,
+	operation text
+);
+
+CREATE TABLE IF NOT EXISTS _cb_cr_repository_details(
+	id serial NOT NULL PRIMARY KEY,
+	user_id integer,
+	provider_id integer,
+	repository_id text,
+	repository_details text,
+	status text,
+	created_at text,
+	operation text
+);

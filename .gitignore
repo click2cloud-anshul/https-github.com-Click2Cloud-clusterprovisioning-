@@ -14,3 +14,4 @@ venv
 .env
 /config_dumps/*
 *.tar
+dist/
