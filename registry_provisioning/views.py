@@ -1358,3 +1358,67 @@ def alibaba_get_repo_build_list(request):
 
     finally:
         return JsonResponse(api_response, safe=False)
+
+
+# get image mainfest for alibaba container registry images
+@api_view(['POST'])
+def alibaba_get_image_mainfest_request(request):
+    """
+    Delete the repository of tag on the alibaba container registry
+    :param request:
+    :return:
+    """
+    api_response = {
+        'is_successful': True,
+        'image_layers': None,
+        'error': None
+    }
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id', 'provider_id', 'namespace', 'repository_name', 'region_id', 'tag_name']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if not error_key_validations_cluster_provisioning:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            namespace = json_request.get('namespace')
+            repository_name = json_request.get('repository_name')
+            region_id = json_request.get('region_id')
+            tag_name = json_request.get('tag_name')
+
+            # Fetching access keys and secret keys from db
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
+            if not error_get_access_key_secret_key_list:
+                error_check_for_provider_id, response_check_for_provider_id = check_for_provider_id(
+                    provider_id, response_get_access_key_secret_key_list)
+                if not error_check_for_provider_id:
+                    # if provider_id present in credentials from database
+                    alibaba_crs = Alibaba_CRS(
+                        ali_access_key=response_check_for_provider_id.get('client_id'),
+                        ali_secret_key=response_check_for_provider_id.get('client_secret')
+                    )
+                    error_get_image_mainfest_request, response_get_image_mainfest_request = alibaba_crs.get_image_mainfest_request(
+                        namespace=namespace, repository_name=repository_name, region_id=region_id, tag_name=tag_name)
+                    if not error_get_image_mainfest_request:
+                        api_response.update({'image_layers': response_get_image_mainfest_request})
+                    else:
+                        raise Exception(response_get_image_mainfest_request)
+
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response_check_for_provider_id)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response_get_access_key_secret_key_list)
+        else:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+
+    finally:
+        return JsonResponse(api_response, safe=False)

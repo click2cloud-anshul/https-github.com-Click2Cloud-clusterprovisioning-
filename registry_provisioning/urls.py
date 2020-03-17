@@ -20,6 +20,8 @@ urlpatterns = [
 
     url(r'^alibaba/list-all-repository-build$', views.alibaba_get_repo_build_list),
 
+    url(r'^alibaba/get-image-mainfest-request$', views.alibaba_get_image_mainfest_request),
+
     url(r'^alibaba/get-repository-webhook$', views.alibaba_get_repository_webhook_request),
     url(r'^alibaba/create-repository-webhook$', views.alibaba_create_repository_webhook_request),
     url(r'^alibaba/delete-repository-webhook$', views.alibaba_delete_repository_webhook_request),

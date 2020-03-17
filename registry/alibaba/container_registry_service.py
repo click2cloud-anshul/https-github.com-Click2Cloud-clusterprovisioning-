@@ -6,7 +6,7 @@ from aliyunsdkcr.request.v20160607 import CreateNamespaceRequest, GetNamespaceLi
     DeleteNamespaceRequest, UpdateNamespaceRequest, CreateRepoRequest, GetRepoListByNamespaceRequest, UpdateRepoRequest, \
     DeleteRepoRequest, GetRepoTagsRequest, GetRepoBuildListRequest, GetRepoWebhookRequest, CreateRepoWebhookRequest, \
     DeleteRepoWebhookRequest, UpdateRepoWebhookRequest, GetRepoSourceRepoRequest, DeleteImageRequest, \
-    GetImageLayerRequest
+    GetImageLayerRequest, GetImageManifestRequest
 
 from cluster.alibaba.compute_service import Alibaba_ECS
 
@@ -953,6 +953,53 @@ class Alibaba_CRS:
 
             response_delete_repo_webhook_request = client.do_action_with_exception(request_delete_repo_webhook_request)
             response = json.loads(response_delete_repo_webhook_request)
+        except ServerException as e:
+            error = True
+            if 'key is not found.' in str(e.message):
+                response = e.message
+            else:
+                if 'ServerResponseBody' in e.message:
+                    response = json.loads(str(e.message).split('ServerResponseBody: ')[1]).get('message')
+                elif response == '':
+                    response = 'Invalid request %s' % json.loads(str(e.message).split('ServerResponseBody: ')[1]).get(
+                        'code')
+                elif response is None:
+                    response = e.error_code
+                else:
+                    response = e.message
+        except ClientException as e:
+            error = True
+            if 'Max retries exceeded' in str(e.message):
+                response = 'Max retries exceeded, failed to establish a new connection'
+            else:
+                response = e.message
+        except Exception as e:
+            error = True
+            response = e.message
+        finally:
+            return error, response
+
+    def get_image_mainfest_request(self, region_id, namespace, repository_name, tag_name):
+        """
+        This method will return manifest information belongs to a particular image
+        :param region_id:
+        :param namespace:
+        :param repository_name:
+        :param tag_name:
+        :return:
+        """
+        error = False
+        response = None
+
+        try:
+            client = AcsClient(self.access_key, self.secret_key, "cr.%s.aliyuncs.com" % region_id)
+            request_get_image_mainfest_request = GetImageManifestRequest.GetImageManifestRequest()
+            request_get_image_mainfest_request.set_endpoint("cr.%s.aliyuncs.com" % region_id)
+            request_get_image_mainfest_request.set_RepoNamespace(namespace)
+            request_get_image_mainfest_request.set_RepoName(repository_name)
+            request_get_image_mainfest_request.set_Tag(tag_name)
+            response_get_image_mainfest_request = client.do_action_with_exception(request_get_image_mainfest_request)
+            response = json.loads(response_get_image_mainfest_request)
         except ServerException as e:
             error = True
             if 'key is not found.' in str(e.message):
