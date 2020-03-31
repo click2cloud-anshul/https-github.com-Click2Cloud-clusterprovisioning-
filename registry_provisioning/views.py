@@ -338,7 +338,7 @@ def alibaba_list_namespace(request):
                                 'namespace_list': [],
                                 'error': response_list_namespaces})
                         all_provider_container_registry_details.append(provider_container_registry_info)
-                    api_response = {'namespace_list': all_provider_container_registry_details}
+                    api_response.update({'namespace_list': all_provider_container_registry_details})
                 else:
                     # if provider_id is not present in credentials
                     raise Exception(response_get_grouped_credential_list)
