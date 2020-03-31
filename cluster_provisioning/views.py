@@ -383,9 +383,9 @@ def alibaba_all_pod_details(request):
                                 'cluster_list': [],
                                 'error': result_get_pod_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_pod_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_pod_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -456,9 +456,9 @@ def alibaba_all_namespace_details(request):
                                 'cluster_list': [],
                                 'error': result_get_namespace_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_namespace_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_namespace_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -529,9 +529,9 @@ def alibaba_all_role_details(request):
                                 'cluster_list': [],
                                 'error': result_get_role_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_role_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_role_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -602,9 +602,9 @@ def alibaba_all_cluster_role_details(request):
                                 'cluster_list': [],
                                 'error': result_get_role_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_cluster_role_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_cluster_role_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -675,9 +675,9 @@ def alibaba_all_persistent_volume_details(request):
                                 'cluster_list': [],
                                 'error': result_get_persistent_volume_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_persistent_volume_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_persistent_volume_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -748,9 +748,9 @@ def alibaba_all_persistent_volume_claim_details(request):
                                 'cluster_list': [],
                                 'error': result_get_persistent_volume_claims_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_persistent_volume_claims_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_persistent_volume_claims_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -821,9 +821,9 @@ def alibaba_all_deployment_details(request):
                                 'cluster_list': [],
                                 'error': result_get_deployment_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_deployment_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_deployment_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -894,9 +894,9 @@ def alibaba_all_secret_details(request):
                                 'cluster_list': [],
                                 'error': result_get_secret_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_secret_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_secret_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -967,9 +967,9 @@ def alibaba_all_node_details(request):
                                 'cluster_list': [],
                                 'error': result_get_node_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_node_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_node_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1040,9 +1040,9 @@ def alibaba_all_service_details(request):
                                 'cluster_list': [],
                                 'error': result_get_service_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_service_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_service_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1113,9 +1113,9 @@ def alibaba_all_cron_job_details(request):
                                 'cluster_list': [],
                                 'error': result_get_cron_job_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_cron_job_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_cron_job_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1186,9 +1186,9 @@ def alibaba_all_job_details(request):
                                 'cluster_list': [],
                                 'error': result_get_job_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_job_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_job_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1259,9 +1259,9 @@ def alibaba_all_storage_class_details(request):
                                 'cluster_list': [],
                                 'error': result_get_storage_class_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_storage_class_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_storage_class_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1332,9 +1332,9 @@ def alibaba_all_replication_controller_details(request):
                                 'cluster_list': [],
                                 'error': result_get_replication_controller_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_replication_controller_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_replication_controller_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1405,9 +1405,9 @@ def alibaba_all_stateful_sets_details(request):
                                 'cluster_list': [],
                                 'error': result_get_stateful_set_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_stateful_sets_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_stateful_sets_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1478,9 +1478,9 @@ def alibaba_all_replica_sets_details(request):
                                 'cluster_list': [],
                                 'error': result_get_replica_set_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_replica_set_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_replica_set_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1551,9 +1551,9 @@ def alibaba_all_daemon_set_details(request):
                                 'cluster_list': [],
                                 'error': result_get_daemon_set_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_daemon_set_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_daemon_set_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1624,9 +1624,9 @@ def alibaba_all_config_map_details(request):
                                 'cluster_list': [],
                                 'error': result_get_config_map_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_config_map_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_config_map_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -1697,9 +1697,9 @@ def alibaba_all_ingress_details(request):
                                 'cluster_list': [],
                                 'error': result_get_ingress_details})
                         all_provider_cluster_details.append(providers_cluster_info)
-                    api_response = {'is_successful': True,
-                                    'all_ingress_details': all_provider_cluster_details,
-                                    'error': None}
+                    api_response.update({'is_successful': True,
+                                         'all_ingress_details': all_provider_cluster_details,
+                                         'error': None})
                 else:
                     api_response.update({'is_successful': False,
                                          'error': response_get_grouped_credential_list})
@@ -3589,9 +3589,9 @@ def on_premises_all_pod_details(request):
                 all_on_premises.append(all_on_premises_cluster_details)
             else:
                 raise Exception(response_get_db_info)
-            api_response = {'is_successful': True,
-                            'all_pod_details': all_on_premises,
-                            'error': None}
+            api_response.update({'is_successful': True,
+                                 'all_pod_details': all_on_premises,
+                                 'error': None})
     except Exception as e:
         api_response.update({
             'error': e.message,
@@ -3703,9 +3703,9 @@ def on_premises_get_all_resources(request):
                     raise Exception('No cluster_id %s found' % cluster_id)
             else:
                 raise Exception(response_get_db_info)
-            api_response = {'is_successful': True,
-                            'all_resource_details': all_on_premises_cluster_details,
-                            'error': None}
+            api_response.update({'is_successful': True,
+                                 'all_resource_details': all_on_premises_cluster_details,
+                                 'error': None})
     except Exception as e:
         resources = {
             'namespaces': 0,
