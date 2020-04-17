@@ -56,3 +56,11 @@ CREATE TABLE IF NOT EXISTS _cb_cr_repository_details(
 	created_at text,
 	operation text
 );
+
+CREATE TABLE IF NOT EXISTS public._cb_cp_instance_details
+(
+    id  serial NOT NULL PRIMARY KEY,
+    cloud_provider text,
+    zone_id text,
+    instance_details text
+);

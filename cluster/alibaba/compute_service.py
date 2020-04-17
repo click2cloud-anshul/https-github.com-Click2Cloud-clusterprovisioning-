@@ -9,6 +9,9 @@ from aliyunsdkecs.request.v20140526.DescribeVSwitchesRequest import DescribeVSwi
 from aliyunsdkecs.request.v20140526.DescribeVpcsRequest import DescribeVpcsRequest
 from aliyunsdkecs.request.v20140526.DescribeZonesRequest import DescribeZonesRequest
 
+from cluster.others.miscellaneous_operation import get_instance_details, ALIBABA_CLOUD, \
+    insert_or_update_instance_details
+
 
 class Alibaba_ECS:
     def __init__(self, ali_access_key, ali_secret_key, region_id):
@@ -246,8 +249,7 @@ class Alibaba_ECS:
                                 'InstanceType')
                             for instances_types_from_describe_family in instances_types_info_from_describe_family:
                                 if instances_types_from_describe_family.get(
-                                        'InstanceTypeId') in instance_type_family_zone.get(
-                                    'instance_list'):
+                                        'InstanceTypeId') in instance_type_family_zone.get('instance_list'):
                                     instance_info = {}
                                     if int(instances_types_from_describe_family.get('CpuCoreCount') > 1) and int(
                                             instances_types_from_describe_family.get('MemorySize')) > 3:
@@ -268,5 +270,85 @@ class Alibaba_ECS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
+        finally:
+            return error, response
+
+    def list_ecs_instances(self, zone_id):
+        """
+        list the instances of the zone
+        :param zone_id:
+        :return:
+        """
+        error = False
+        response = None
+
+        try:
+            error_get_instance_details, response_get_instance_details = get_instance_details(ALIBABA_CLOUD, zone_id)
+            flag = False
+            if not error_get_instance_details:
+                if len(response_get_instance_details) > 0:
+                    response = json.loads(response_get_instance_details)
+                    if 'instance_type_list' in response_get_instance_details:
+                        response = response.get('instance_type_list')
+                    else:
+                        flag = True
+                else:
+                    flag = True
+            else:
+                raise Exception(response_get_instance_details)
+            if flag:
+                error_list_instances, response_list_instances = self.list_instances(zone_id)
+                if error_list_instances:
+                    raise Exception(response_list_instances)
+                else:
+                    response = response_list_instances
+                    params = {
+                        'is_insert': True,
+                        'zone_id': zone_id,
+                        'instance_details': response_list_instances,
+                        'provider_name': ALIBABA_CLOUD}
+                    error_insert_or_update_instance_details, response_insert_or_update_instance_details = insert_or_update_instance_details(
+                        params)
+                    if error_insert_or_update_instance_details:
+                        raise Exception(response_insert_or_update_instance_details)
+        except Exception as e:
+            error = True
+            response = e.message
+            print e.message
+        finally:
+            return error, response
+
+    def list_zones(self):
+        """
+        This Function will list all the zones for all the regions of alibaba cloud
+        """
+        error = False
+        response = None
+        region_and_zones_list = []
+        try:
+            is_sucessful, response_list_container_service_regions = self.list_container_service_regions()
+            if is_sucessful:
+                for region in response_list_container_service_regions:
+                    region_and_zones = {}
+                    zone_list = []
+                    client = AcsClient(self.access_key, self.secret_key, region)
+                    request = DescribeZonesRequest()
+                    request.set_accept_format('json')
+                    response = client.do_action_with_exception(request)
+                    if response is not None:
+                        json_response = json.loads(response)
+                        zones = json_response.get('Zones')
+                        if 'Zone' in zones:
+                            zone_list_alibaba = zones.get('Zone')
+                            for zone in zone_list_alibaba:
+                                zone_list.append(zone.get('ZoneId'))
+                    region_and_zones.update({"region_id": region, "zone_list": zone_list})
+                    region_and_zones_list.append(region_and_zones)
+            response = region_and_zones_list
+        except Exception as e:
+            error = True
+            response = e.message
+            print e.message
         finally:
             return error, response

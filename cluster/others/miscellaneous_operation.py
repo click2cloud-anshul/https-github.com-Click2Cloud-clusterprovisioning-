@@ -54,7 +54,10 @@ def get_access_key_secret_key_list(user_id, cloud_type):
 
     except Exception as e:
         error = True
-        response = 'Cannot connect to Database server'
+        if """Max retries exceeded with url: /api/v1/decryptCredentials""" in str(e):
+            response = "Facing issues while connecting middleware"
+        else:
+            response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -123,9 +126,10 @@ def key_validations_cluster_provisioning(request_keys, validation_keys):
                 response.get('error').get('missing').update({'values': []})
     except Exception as e:
         error = True
-        return error, response.update({
+        response.update({
             'message': e.message
         })
+        print e.message
     finally:
         if len(response) == 0:
             # return error=False if response is empty
@@ -184,7 +188,7 @@ def insert_or_update_cluster_details(params):
             response = 'Success'
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -239,7 +243,7 @@ def insert_or_update_namespace_details(params):
             response = 'Success'
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -294,7 +298,7 @@ def insert_or_update_repository_details(params):
             response = 'Success'
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -355,7 +359,7 @@ def insert_or_update_s2i_details(params, insert_unique_id=None):
             response = 'Success'
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -380,7 +384,8 @@ def get_db_info_using_cluster_id(cluster_id=None):
         response = cursor.fetchall()
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
+        print e.message
     finally:
         if cursor is not None:
             cursor.close()
@@ -404,7 +409,7 @@ def get_db_info_using_provider_id(provider_id):
         response = cursor.fetchall()
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -430,7 +435,7 @@ def get_db_info_using_user_id_and_provider_id(user_id, provider_id):
         response = cursor.fetchall()
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -456,7 +461,7 @@ def get_s2i_details(user_id):
         response = cursor.fetchall()
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -490,7 +495,7 @@ def delete_s2i_image_detail_from_db(json_request):
         cursor.execute(sql_cmd)
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -637,7 +642,7 @@ def insert_or_update_cluster_config_details(params):
             response = 'Success'
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -679,7 +684,7 @@ def get_cluster_config_details(provider, cluster_id):
 
     except Exception as e:
         error = True
-        response = e.message
+        response = 'Cannot connect to Database server'
         print e.message
     finally:
         if cursor is not None:
@@ -715,3 +720,105 @@ def run_postgres_sql_script():
     finally:
         if cursor is not None:
             cursor.close()
+
+
+def clean_instance_type_details():
+    cursor = None
+    try:
+        print("Clearing instance list for Alibaba")
+        # create cursor for calling stored procedure
+        cursor = connection.cursor()
+
+        # create cluster provisioning related functions
+        cmd = 'delete FROM public._cb_cp_instance_details where id > 0;'
+        cursor.execute(cmd)
+        connection.commit()
+        print("Clearing instance list for Alibaba is completed")
+    except Exception as e:
+        print e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+
+def get_instance_details(provider_name, zone_id):
+    """
+    retrieve the data of instance type by zone_id
+    :param provider_name:
+    :param zone_id:
+    :return:
+    """
+    cursor = None
+    error = False
+    instance_type_details = {}
+    response = None
+    try:
+        cursor = connection.cursor()
+        sql_cmd = "SELECT instance_details FROM public._cb_cp_instance_details where cloud_provider = " \
+                  "'{provider_name}' and zone_id = '{zone_id}'".format(
+            provider_name=provider_name,
+            zone_id=zone_id)
+        cursor.execute(sql_cmd)
+        result = cursor.fetchall()
+        if len(result) > 0:
+            result = result[0]
+            instance_type_details = (result[0])
+        response = instance_type_details
+
+    except Exception as e:
+        error = True
+        response = e.message
+        print e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return error, response
+
+
+def insert_or_update_instance_details(params):
+    """
+    insert or update instance type data of instance type by zone_id and provider_name
+    :param params:
+    :return:
+    """
+    cursor = None
+    error = False
+    response = None
+    try:
+        cursor = connection.cursor()
+        instance_details = json.dumps({"instance_type_list": params.get('instance_details')})
+        provider_name = str(params.get('provider_name'))
+        zone_id = str(params.get('zone_id'))
+        error_get_instance_details, response_get_instance_details = get_instance_details(provider_name, zone_id)
+        if not error_get_instance_details:
+            if len(response_get_instance_details) > 0:
+                params.update({'is_insert': False})
+        else:
+            raise Exception(response_get_instance_details)
+        if params.get('is_insert'):
+            cmd = "INSERT INTO public._cb_cp_instance_details(cloud_provider, zone_id, instance_details)" \
+                  " VALUES ('{cloud_provider}','{zone_id}','{instance_details}');".format(
+                cloud_provider=provider_name, zone_id=str(zone_id),
+                instance_details=instance_details
+            )
+            cursor.execute(cmd)
+            connection.commit()
+            response = 'Success'
+        else:
+            # update operation
+            cmd = "UPDATE public._cb_cp_instance_details SET instance_details = '{instance_details}' " \
+                  "where cloud_provider = '{cloud_provider}' and zone_id = '{zone_id}'".format(
+                cloud_provider=provider_name, zone_id=str(zone_id),
+                instance_details=instance_details
+            )
+            cursor.execute(cmd)
+            connection.commit()
+            response = 'Success'
+    except Exception as e:
+        error = True
+        response = 'Cannot connect to Database server'
+        print e.message
+    finally:
+        if cursor is not None:
+            cursor.close()
+        return error, response

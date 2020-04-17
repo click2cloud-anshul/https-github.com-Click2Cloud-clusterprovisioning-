@@ -64,6 +64,7 @@ def create_new_image_using_s2i(request):
         api_response.update({
             'error': e.message
         })
+        print e.message
     finally:
         return JsonResponse(api_response, safe=False)
 
@@ -141,6 +142,7 @@ def delete_builder_image(docker_cli, builder_image):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         return error, response
 
@@ -161,6 +163,7 @@ def delete_new_image(docker_cli, new_image):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         return error, response
 
@@ -181,6 +184,7 @@ def delete_tag_image(docker_cli, tag_image):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         return error, response
 
@@ -423,6 +427,7 @@ def get_image_details(request):
         api_response.update({
             'error': e.message
         })
+        print e.message
     finally:
         return JsonResponse(api_response, safe=False)
 
@@ -456,5 +461,6 @@ def delete_image_detail(request):
         api_response.update({
             'error': e.message
         })
+        print e.message
     finally:
         return JsonResponse(api_response, safe=False)

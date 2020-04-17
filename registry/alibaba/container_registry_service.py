@@ -66,6 +66,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -118,6 +119,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -161,6 +163,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -205,6 +208,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -262,6 +266,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -345,6 +350,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -411,6 +417,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -467,6 +474,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -516,6 +524,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -565,6 +574,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -610,6 +620,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -655,6 +666,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -700,6 +712,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -751,6 +764,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -802,6 +816,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -864,6 +879,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -928,6 +944,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -976,6 +993,7 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -1023,5 +1041,6 @@ class Alibaba_CRS:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
