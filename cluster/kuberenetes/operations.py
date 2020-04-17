@@ -44,7 +44,7 @@ def create_file_for_app_deploy(cluster_id, data):
         if isinstance(e, TypeError):
             response = 'Incorrect Padding'
         error = True
-
+        print e.message
     finally:
         return error, response
 
@@ -86,6 +86,7 @@ def check_for_all_namespaces(yaml_file_path):
     except Exception as e:
         error = True
         response = e.message
+        print e.message
     finally:
         return error, response, is_all_namespace
 
@@ -279,6 +280,7 @@ class Kubernetes_Operations(object):
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -356,6 +358,7 @@ class Kubernetes_Operations(object):
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -411,6 +414,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -438,6 +442,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -473,6 +478,7 @@ class Kubernetes_Operations(object):
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -500,6 +506,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -527,6 +534,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -554,6 +562,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -581,6 +590,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -608,6 +618,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -635,6 +646,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -662,6 +674,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -689,6 +702,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -716,6 +730,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -743,6 +758,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -770,6 +786,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -797,6 +814,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -824,6 +842,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -851,6 +870,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -878,6 +898,7 @@ class Kubernetes_Operations(object):
                 response = 'Unable to fetch details'
             else:
                 response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -929,6 +950,7 @@ class Kubernetes_Operations(object):
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -974,6 +996,7 @@ class Kubernetes_Operations(object):
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -1073,6 +1096,7 @@ class Kubernetes_Operations(object):
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -1204,6 +1228,7 @@ class Kubernetes_Operations(object):
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -1234,5 +1259,6 @@ class Kubernetes_Operations(object):
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response

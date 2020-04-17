@@ -147,15 +147,14 @@ def alibaba_instance_list(request):
                                 instances = {'zone_id': zone_id,
                                              'instances': None,
                                              'error': None}
-                                error, response = alibaba_ecs.list_instances(zone_id)
-                                if not error:
-                                    instances.update({'instances': response})
-                                #
+                                error_list_ecs_instances, response_list_ecs_instances = alibaba_ecs.list_ecs_instances(
+                                    zone_id)
+                                if not error_list_ecs_instances:
+                                    instances.update({'instances': response_list_ecs_instances})
                                 else:
-                                    instances.update({'error': response,
+                                    instances.update({'error': response_list_ecs_instances,
                                                       })
                                 instance_list.append(instances.copy())
-
                 if access_flag:
                     api_response.update({'is_successful': False,
                                          'error': 'Invalid provider_id or no data available.'})
@@ -3597,6 +3596,65 @@ def on_premises_all_pod_details(request):
             'error': e.message,
             'is_successful': False
         })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def on_premises_all_service_details(request):
+    """
+    This method will list all pods for all on premises clusters
+    :param request:
+    :return:
+    """
+    api_response = {'is_successful': True,
+                    'all_service_details': [],
+                    'error': None}
+    cluster_list = []
+    all_on_premises = []
+    all_on_premises_cluster_details = {
+        'provider_names': [
+            {
+                'name': 'On-premises',
+                'id': 0
+            }
+        ],
+        'cluster_list': cluster_list
+    }
+    provider_id = 0
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+        else:
+            user_id = json_request.get('user_id')
+            # Fetching cluster_id from db
+            error_get_db_info, response_get_db_info = get_db_info_using_user_id_and_provider_id(user_id=user_id,
+                                                                                                provider_id=provider_id)
+            if not error_get_db_info:
+                for response_from_db in response_get_db_info:
+                    cluster_details = json.loads(base64.b64decode(response_from_db[4]))
+                    on_premises_cluster = On_Premises_Cluster(user_id, cluster_details.get('cluster_name'),
+                                                              json.loads(base64.b64decode(
+                                                                  cluster_details.get('cluster_config'))))
+                    result_get_services = on_premises_cluster.get_services(cluster_details)
+                    cluster_list.append(result_get_services)
+                all_on_premises.append(all_on_premises_cluster_details)
+            else:
+                raise Exception(response_get_db_info)
+            api_response.update({'is_successful': True,
+                                 'all_service_details': all_on_premises,
+                                 'error': None})
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+        print e.message
     finally:
         return JsonResponse(api_response, safe=False)
 

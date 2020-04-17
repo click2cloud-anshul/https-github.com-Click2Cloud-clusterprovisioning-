@@ -96,6 +96,7 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -139,6 +140,51 @@ class On_Premises_Cluster:
 
         except Exception as e:
             response_cluster_details.update({'error': e.message})
+            print e.message
+        finally:
+            return response_cluster_details
+
+    def get_services(self, cluster_details):
+        """
+        This method will provide service details
+        :param cluster_details:
+        :return:
+        """
+        cluster_id = cluster_details.get('cluster_id')
+        response_cluster_details = {
+            'cluster_name': self.cluster_name,
+            'cluster_id': cluster_details.get('cluster_id'),
+            'service_details': {},
+            'error': None,
+            'labels': {}
+        }
+
+        try:
+            error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                cluster_id)
+            if not error_describe_cluster_config_token_endpoint:
+                # Adding unique labels for the cluster_roles in a single cluster
+                k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                error_get_services, response_get_services = k8s_obj.get_services(
+                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                        'cluster_public_endpoint'),
+                    token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                if not error_get_services:
+                    labels = get_labels_from_items(
+                        response_get_services.get('items'))
+                    response_cluster_details.update({
+                        'service_details': response_get_services,
+                        'labels': labels
+                    })
+                else:
+                    response_cluster_details.update({'error': response_get_services})
+            else:
+                response_cluster_details.update(
+                    {'error': response_describe_cluster_config_token_endpoint})
+
+        except Exception as e:
+            response_cluster_details.update({'error': e.message})
+            print e.message
         finally:
             return response_cluster_details
 
@@ -220,6 +266,7 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -236,6 +283,7 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -272,6 +320,7 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
 
@@ -302,5 +351,6 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
+            print e.message
         finally:
             return error, response
