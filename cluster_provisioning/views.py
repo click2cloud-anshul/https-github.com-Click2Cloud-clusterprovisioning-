@@ -3490,7 +3490,8 @@ def alibaba_all_resources(request):
             'replication_controller': 0,
             'roles': 0,
             'stateful_sets': 0,
-            'cluster_roles': 0
+            'cluster_roles': 0,
+            'storage_class': 0
         }
         api_response.update({
             'error': e.message,
@@ -3783,7 +3784,8 @@ def on_premises_get_all_resources(request):
             'replication_controller': 0,
             'roles': 0,
             'stateful_sets': 0,
-            'cluster_roles': 0
+            'cluster_roles': 0,
+            'storage_class': 0
         }
         api_response.update({
             'error': e.message,

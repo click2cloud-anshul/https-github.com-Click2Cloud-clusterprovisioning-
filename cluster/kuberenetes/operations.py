@@ -1127,7 +1127,8 @@ class Kubernetes_Operations(object):
             'replication_controller': 0,
             'roles': 0,
             'stateful_sets': 0,
-            'cluster_roles': 0
+            'cluster_roles': 0,
+            'storage_class': 0
         }
         try:
             error_get_namespaces, response_get_namespaces = self.get_namespaces(cluster_url=cluster_url, token=token)
@@ -1203,6 +1204,11 @@ class Kubernetes_Operations(object):
             if error_get_replication_controllers:
                 raise Exception(response_get_replication_controllers)
 
+            error_get_get_storage_classes, response_get_get_storage_classes = self.get_storage_classes(
+                cluster_url=cluster_url, token=token)
+            if error_get_get_storage_classes:
+                raise Exception(response_get_get_storage_classes)
+
             resources.update({
                 'namespaces': len(response_get_namespaces.get('items')),
                 'pods': len(response_get_pods.get('items')),
@@ -1221,7 +1227,8 @@ class Kubernetes_Operations(object):
                 'replication_controller': len(response_get_replication_controllers.get('items')),
                 'roles': len(response_get_roles.get('role_list').get('items')),
                 'stateful_sets': len(response_get_stateful_sets.get('items')),
-                'cluster_roles': len(response_get_roles.get('cluster_role_list').get('items'))
+                'cluster_roles': len(response_get_roles.get('cluster_role_list').get('items')),
+                'storage_class': len(response_get_get_storage_classes.get('items'))
             })
             response = resources
 
