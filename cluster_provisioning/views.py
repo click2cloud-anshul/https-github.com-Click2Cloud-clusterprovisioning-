@@ -3794,3 +3794,79 @@ def on_premises_get_all_resources(request):
         })
     finally:
         return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
+def alibaba_get_widget_information(request):
+    """
+    This method will list all resources count for alibaba clusters with all providers
+    :param request:
+    :return:
+    """
+    all_provider_cluster_details = []
+    api_response = {'is_successful': True,
+                    'response': None,
+                    'error': None}
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+        if error_key_validations_cluster_provisioning:
+            api_response.update({
+                'error': response_key_validations_cluster_provisioning.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            # Fetching access keys and secret keys from db
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
+            if not error_get_access_key_secret_key_list:
+                # groups the common credentials according to the access key
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+                if not error_get_grouped_credential_list:
+                    for credential in response_get_grouped_credential_list:
+                        alibaba_cs = Alibaba_CS(
+                            ali_access_key=credential.get('access_key'),
+                            ali_secret_key=credential.get('secret_key'),
+                            region_id='default'
+                        )
+                        error_get_widget_information, result_get_widget_information = alibaba_cs.get_widget_information()
+                        for credential_item in credential.get('provider_name_list'):
+                            providers_cluster_info = {'provider_name': credential_item.get('name'),
+                                                      'id': credential_item.get('id'),
+                                                      'subscription_id': credential.get('subscription_id'),
+                                                      'error': None,
+                                                      'cluster_list': None
+                                                      }
+                            if not error_get_widget_information:
+                                if len(result_get_widget_information) > 0:
+                                    providers_cluster_info.update({
+                                        'cluster_list': result_get_widget_information})
+                            else:
+                                # skip if any error occurred for a particular key
+                                providers_cluster_info.update({
+                                    'error': result_get_widget_information})
+                            all_provider_cluster_details.append(providers_cluster_info)
+                    response = {
+                        'widget_details': all_provider_cluster_details
+                    }
+                    api_response.update({'is_successful': True,
+                                         'response': response,
+                                         'error': None})
+                else:
+                    api_response.update({'is_successful': False,
+                                         'error': response_get_grouped_credential_list})
+            else:
+                api_response.update({'is_successful': False,
+                                     'error': response_get_access_key_secret_key_list})
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False,
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)

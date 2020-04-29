@@ -1269,3 +1269,71 @@ class Kubernetes_Operations(object):
             print e.message
         finally:
             return error, response
+
+    def get_widget_information(self, cluster_url=None, token=None):
+        """
+        it retrives the information for widget related information
+        :param cluster_url:
+        :param token:
+        :return:
+        """
+        error = False
+        response = None
+        widget_information = {
+            'namespaces': 0,
+            'pods': 0,
+            'deployments': 0,
+            'nodes': 0,
+            'services': 0,
+            'persistent_volume_claims': 0,
+            'persistent_volumes': 0,
+        }
+        resources = widget_information
+        try:
+            error_get_namespaces, response_get_namespaces = self.get_namespaces(cluster_url=cluster_url, token=token)
+            if error_get_namespaces:
+                raise Exception(response_get_namespaces)
+
+            error_get_pods, response_get_pods = self.get_pods(cluster_url=cluster_url, token=token)
+            if error_get_pods:
+                raise Exception(response_get_pods)
+
+            error_get_deployments, response_get_deployments = self.get_deployments(cluster_url=cluster_url, token=token)
+            if error_get_deployments:
+                raise Exception(response_get_deployments)
+
+            error_get_services, response_get_services = self.get_services(cluster_url=cluster_url, token=token)
+            if error_get_services:
+                raise Exception(response_get_services)
+
+            error_get_nodes, response_get_nodes = self.get_nodes(cluster_url=cluster_url, token=token)
+            if error_get_nodes:
+                raise Exception(response_get_nodes)
+
+            error_get_persistent_volume_claims, response_get_persistent_volume_claims = self.get_persistent_volume_claims(
+                cluster_url=cluster_url, token=token)
+            if error_get_persistent_volume_claims:
+                raise Exception(response_get_persistent_volume_claims)
+
+            error_get_persistent_volumes, response_get_persistent_volumes = self.get_persistent_volumes(
+                cluster_url=cluster_url, token=token)
+            if error_get_persistent_volumes:
+                raise Exception(response_get_persistent_volumes)
+
+            resources.update({
+                'namespaces': len(response_get_namespaces.get('items')),
+                'pods': len(response_get_pods.get('items')),
+                'deployments': len(response_get_deployments.get('items')),
+                'services': len(response_get_services.get('items')),
+                'nodes': len(response_get_nodes.get('items')),
+                'persistent_volume_claims': len(response_get_persistent_volume_claims.get('items')),
+                'persistent_volumes': len(response_get_persistent_volumes.get('items')),
+            })
+            response = resources
+
+        except Exception as e:
+            error = True
+            response = e.message
+            print e.message
+        finally:
+            return error, response

@@ -57,4 +57,5 @@ urlpatterns = [
     url(r'^on-premises/get-all-service-details$', views.on_premises_all_service_details),
     url(r'^on-premises/create-application$', views.on_premises_create_application),
     url(r'^on-premises/get-all-resources$', views.on_premises_get_all_resources),
+    url(r'^alibaba/get-widget-information$', views.alibaba_get_widget_information),
 ]

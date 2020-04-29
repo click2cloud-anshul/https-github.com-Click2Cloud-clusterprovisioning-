@@ -51,14 +51,20 @@ def get_access_key_secret_key_list(user_id, cloud_type):
             else:
                 error = True
                 response = result_api.get('error')
+                if not result_api.get('error'):
+                    print result_api.get('error')
+                    raise Exception('Failed to decrypt the credentials.')
 
     except Exception as e:
         error = True
-        if """Max retries exceeded with url: /api/v1/decryptCredentials""" in str(e):
+        if 'Failed to decrypt' in e.message:
+            response = e.message
+        elif "/api/v1/decryptCredentials" in str(e):
             response = "Facing issues while connecting middleware"
-        else:
+        elif os.getenv("DB_Host") in e.message:
             response = 'Cannot connect to Database server'
-        print e.message
+        else:
+            response = e.message
     finally:
         if cursor is not None:
             cursor.close()

@@ -94,7 +94,8 @@ class Alibaba_CS:
                 error_message_splitted = str(e.message).split('ServerResponseBody: ')
                 response = '%s %s' % (
                     'Error while creating cluster.', json.loads(error_message_splitted[1]).get('message'))
-
+            elif 'not found' in e.message:
+                response = e.message
             else:
                 response = 'Unable to create the cluster'
         except Exception as e:
@@ -146,6 +147,8 @@ class Alibaba_CS:
                     response = '%s %s' % ('Error while deleting the cluster.', e.message)
             elif e.http_status == 404:
                 response = '%s %s' % ('Error while deleting the cluster.', e.message)
+            elif 'not found' in e.message:
+                response = e.message
             else:
                 response = 'Unable to Delete the cluster'
         except Exception as e:
@@ -238,8 +241,9 @@ class Alibaba_CS:
             if e.http_status in error_codes:
                 error_message_splitted = str(e.message).split('ServerResponseBody: ')
                 response = '%s %s' % (
-                    'Error while creating cluster.', json.loads(error_message_splitted[1]).get('message'))
-
+                    'Error while fetching cluster.', json.loads(error_message_splitted[1]).get('message'))
+            elif 'not found' in e.message:
+                response = e.message
             else:
                 response = 'Unable to access the cluster'
         except Exception as e:
@@ -400,7 +404,8 @@ class Alibaba_CS:
                 error_message_splitted = str(e.message).split('ServerResponseBody: ')
                 response = '%s %s' % (
                     'Error while creating cluster.', json.loads(error_message_splitted[1]).get('message'))
-
+            elif 'not found' in e.message:
+                response = e.message
             else:
                 response = 'Unable to access the cluster'
         except Exception as e:
@@ -440,7 +445,8 @@ class Alibaba_CS:
                 error_message_splitted = str(e.message).split('ServerResponseBody: ')
                 response = '%s %s' % (
                     'Error while creating cluster.', json.loads(error_message_splitted[1]).get('message'))
-
+            elif 'not found' in e.message:
+                response = e.message
             else:
                 response = 'Unable to access the cluster'
         except Exception as e:
@@ -3129,6 +3135,77 @@ class Alibaba_CS:
             else:
                 raise Exception(response_describe_all_clusters)
 
+        except Exception as e:
+            error = True
+            response = e.message
+            print e.message
+        finally:
+            return error, response
+
+    def get_widget_information(self):
+        """
+        Get the details of selected resources of the cluster in alibaba console
+        :return:
+        """
+        error = False
+        response = []
+        cluster_details_list = []
+        try:
+            # self.describe_all_clusters()
+            # self.get_all_resources_list(cluster_id)
+            error_describe_all_clusters, response_describe_all_clusters = self.describe_all_clusters()
+            if not error_describe_all_clusters:
+                for cluster in response_describe_all_clusters:
+                    cluster_id = cluster.get('cluster_id')
+                    widget_information = {
+                        'namespaces': 0,
+                        'pods': 0,
+                        'deployments': 0,
+                        'nodes': 0,
+                        'services': 0,
+                        'persistent_volume_claims': 0,
+                        'persistent_volumes': 0,
+                    }
+                    cluster_details = {'cluster_id': cluster_id,
+                                       'cluster_name': cluster.get('name'),
+                                       'component_details': widget_information,
+                                       'status': cluster.get('state'),
+                                       'error': None}
+                    error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
+                        cluster)
+                    if not error_check_database_state_and_update:
+                        if 'parameters' in cluster and cluster.get('parameters') is not None:
+                            if 'running' in cluster.get('state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_widget_information, response_get_widget_information = k8s_obj.get_widget_information(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_widget_information:
+                                        cluster_details.update({'component_details': response_get_widget_information})
+                                    else:
+                                        cluster_details.update({'error': response_get_widget_information})
+                                else:
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
+                            else:
+                                # If cluster is not in running state
+                                pass
+                        else:
+                            cluster_details.update({
+                                'error':
+                                    'Unable to find the parameter for cluster. Either it is in initial or failed state'
+                            })
+                    else:
+                        raise Exception(response_check_database_state_and_update)
+                    cluster_details_list.append(cluster_details)
+                response = cluster_details_list
+            else:
+                raise Exception(response_describe_all_clusters)
         except Exception as e:
             error = True
             response = e.message
