@@ -1,3 +1,15 @@
+FROM registry.click2cloud.com:5000/pyarmor:python27 as compiler
+WORKDIR /clusterprovisioning/clusterProvisioningClient
+COPY . .
+RUN cd .. && \
+    pyarmor init clusterProvisioningClient && \
+    cd clusterProvisioningClient && \
+    pyarmor config --entry "manage.py, clusterProvisioningClient/wsgi.py" && \
+    pyarmor build && \
+    pyarmor build --no-runtime && \
+    mv dist/pytransform dist/clusterProvisioningClient/
+RUN python --version
+
 FROM centos:7
 
 ## Set build ARGs
@@ -68,9 +80,11 @@ RUN set -ex \
     && yum clean all
 
 # Copy your application code to the container and configuration files
-RUN mkdir -p /usr/src/app/cluster-provisioner/
 WORKDIR /usr/src/app/cluster-provisioner/
-COPY . /usr/src/app/cluster-provisioner/
+COPY --from=compiler /clusterprovisioning/clusterProvisioningClient/dist/clusterProvisioningClient/ .
+COPY ./auth_templates ./auth_templates
+COPY ./dependency ./dependency
+RUN chmod -R 777 /usr/src/app/*
 
 # make shiftm executable
 RUN mv /usr/src/app/cluster-provisioner/dependency/binaries/s2i /usr/local/bin/ \
