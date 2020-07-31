@@ -480,38 +480,32 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_pods, response_get_pods = k8s_obj.get_pods(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_pods:
-                                            labels = get_labels_from_items(
-                                                response_get_pods.get('items'))
-                                            cluster_details.update({
-                                                'pod_details': response_get_pods,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_pods})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_pods, response_get_pods = k8s_obj.get_pods(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_pods:
+                                        labels = get_labels_from_items(
+                                            response_get_pods.get('items'))
+                                        cluster_details.update({
+                                            'pod_details': response_get_pods,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_pods})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -549,39 +543,34 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_namespaces, response_get_namespaces = k8s_obj.get_namespaces(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_namespaces:
-                                            labels = get_labels_from_items(
-                                                response_get_namespaces.get('items'))
-                                            cluster_details.update({
-                                                'namespace_details': response_get_namespaces,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({
-                                                'error': response_get_namespaces})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_namespaces, response_get_namespaces = k8s_obj.get_namespaces(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_namespaces:
+                                        labels = get_labels_from_items(
+                                            response_get_namespaces.get('items'))
+                                        cluster_details.update({
+                                            'namespace_details': response_get_namespaces,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({
+                                            'error': response_get_namespaces})
                                 else:
-                                    # If cluster is not in running state
                                     cluster_details.update(
-                                        {'error': 'Cluster is not in running state'})
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
+                                # If cluster is not in running state
                                 cluster_details.update(
-                                    {'error':
-                                         'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                    {'error': 'Cluster is not in running state'})
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -620,39 +609,35 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_roles, response_get_roles = k8s_obj.get_roles(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_roles:
-                                            roles_label_dict = get_labels_from_items(
-                                                response_get_roles.get('role_list').get('items'))
-                                            cluster_details.update({
-                                                'role_details': response_get_roles.get('role_list'),
-                                                'labels': roles_label_dict
-                                            })
-                                        else:
-                                            cluster_details.update({
-                                                'error': response_get_roles})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_roles, response_get_roles = k8s_obj.get_roles(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_roles:
+                                        roles_label_dict = get_labels_from_items(
+                                            response_get_roles.get('role_list').get('items'))
+                                        cluster_details.update({
+                                            'role_details': response_get_roles.get('role_list'),
+                                            'labels': roles_label_dict
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({
+                                            'error': response_get_roles})
                                 else:
-                                    # If cluster is not in running state
                                     cluster_details.update(
-                                        {'error': 'Cluster is not in running state'})
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
+                                # If cluster is not in running state
                                 cluster_details.update(
-                                    {'error':
-                                         'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                    {'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -690,39 +675,34 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_roles, response_get_roles = k8s_obj.get_roles(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_roles:
-                                            cluster_roles_label_dict = get_labels_from_items(
-                                                response_get_roles.get('cluster_role_list').get('items'))
-                                            cluster_details.update({
-                                                'cluster_role_details': response_get_roles.get('cluster_role_list'),
-                                                'labels': cluster_roles_label_dict
-                                            })
-                                        else:
-                                            cluster_details.update({
-                                                'error': response_get_roles})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_roles, response_get_roles = k8s_obj.get_roles(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_roles:
+                                        cluster_roles_label_dict = get_labels_from_items(
+                                            response_get_roles.get('cluster_role_list').get('items'))
+                                        cluster_details.update({
+                                            'cluster_role_details': response_get_roles.get('cluster_role_list'),
+                                            'labels': cluster_roles_label_dict
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({
+                                            'error': response_get_roles})
                                 else:
-                                    # If cluster is not in running state
                                     cluster_details.update(
-                                        {'error': 'Cluster is not in running state'})
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
+                                # If cluster is not in running state
                                 cluster_details.update(
-                                    {'error':
-                                         'Unable to find the parameter for cluster. Either it is in initial or failed state'})
+                                    {'error': 'Cluster is not in running state'})
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -760,38 +740,32 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_persistent_volumes, response_get_persistent_volumes = k8s_obj.get_persistent_volumes(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_persistent_volumes:
-                                            labels = get_labels_from_items(
-                                                response_get_persistent_volumes.get('items'))
-                                            cluster_details.update({
-                                                'persistent_volume_details': response_get_persistent_volumes,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_persistent_volumes})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_persistent_volumes, response_get_persistent_volumes = k8s_obj.get_persistent_volumes(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_persistent_volumes:
+                                        labels = get_labels_from_items(
+                                            response_get_persistent_volumes.get('items'))
+                                        cluster_details.update({
+                                            'persistent_volume_details': response_get_persistent_volumes,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_persistent_volumes})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -830,38 +804,32 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_persistent_volume_claims, response_get_persistent_volume_claims = k8s_obj.get_persistent_volume_claims(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_persistent_volume_claims:
-                                            labels = get_labels_from_items(
-                                                response_get_persistent_volume_claims.get('items'))
-                                            cluster_details.update({
-                                                'persistent_volume_claim_details': response_get_persistent_volume_claims,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_persistent_volume_claims})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_persistent_volume_claims, response_get_persistent_volume_claims = k8s_obj.get_persistent_volume_claims(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_persistent_volume_claims:
+                                        labels = get_labels_from_items(
+                                            response_get_persistent_volume_claims.get('items'))
+                                        cluster_details.update({
+                                            'persistent_volume_claim_details': response_get_persistent_volume_claims,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_persistent_volume_claims})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -900,38 +868,32 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_deployments, response_get_deployments = k8s_obj.get_deployments(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_deployments:
-                                            labels = get_labels_from_items(
-                                                response_get_deployments.get('items'))
-                                            cluster_details.update({
-                                                'deployment_details': response_get_deployments,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_deployments})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_deployments, response_get_deployments = k8s_obj.get_deployments(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_deployments:
+                                        labels = get_labels_from_items(
+                                            response_get_deployments.get('items'))
+                                        cluster_details.update({
+                                            'deployment_details': response_get_deployments,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_deployments})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -970,38 +932,32 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_secrets, response_get_secrets = k8s_obj.get_secrets(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_secrets:
-                                            labels = get_labels_from_items(
-                                                response_get_secrets.get('items'))
-                                            cluster_details.update({
-                                                'secret_details': response_get_secrets,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_secrets})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_secrets, response_get_secrets = k8s_obj.get_secrets(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_secrets:
+                                        labels = get_labels_from_items(
+                                            response_get_secrets.get('items'))
+                                        cluster_details.update({
+                                            'secret_details': response_get_secrets,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_secrets})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1040,48 +996,43 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_nodes, response_get_nodes = k8s_obj.get_nodes(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_nodes:
-                                            labels = get_labels_from_items(
-                                                response_get_nodes.get('items'))
-                                            error_compute_allocated_resources, response_compute_allocated_resources = k8s_obj.compute_allocated_resources()
-                                            if not error_compute_allocated_resources:
-                                                for node in response_get_nodes.get('items'):
-                                                    for item in response_compute_allocated_resources:
-                                                        if node.get('metadata').get('name') == item.get(
-                                                                'node_name'):
-                                                            node.update({'allocated_resources': item})
-                                                cluster_details.update({
-                                                    'node_details': response_get_nodes,
-                                                    'labels': labels
-                                                })
-                                            else:
-                                                cluster_details.update(
-                                                    {'error': 'Unable to compute allocated resources'})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_nodes, response_get_nodes = k8s_obj.get_nodes(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_nodes:
+                                        labels = get_labels_from_items(
+                                            response_get_nodes.get('items'))
+                                        error_compute_allocated_resources, response_compute_allocated_resources = k8s_obj.compute_allocated_resources()
+                                        if not error_compute_allocated_resources:
+                                            for node in response_get_nodes.get('items'):
+                                                for item in response_compute_allocated_resources:
+                                                    if node.get('metadata').get('name') == item.get(
+                                                            'node_name'):
+                                                        node.update({'allocated_resources': item})
+                                            cluster_details.update({
+                                                'node_details': response_get_nodes,
+                                                'labels': labels
+                                            })
                                         else:
-                                            cluster_details.update({'error': response_get_nodes})
+                                            cluster_details.update(
+                                                {'error': 'Unable to compute allocated resources'})
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_nodes})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1120,38 +1071,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_services, response_get_services = k8s_obj.get_services(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_services:
-                                            labels = get_labels_from_items(
-                                                response_get_services.get('items'))
-                                            cluster_details.update({
-                                                'service_details': response_get_services,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_services})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_services, response_get_services = k8s_obj.get_services(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_services:
+                                        labels = get_labels_from_items(
+                                            response_get_services.get('items'))
+                                        cluster_details.update({
+                                            'service_details': response_get_services,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_services})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1190,38 +1136,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_cron_jobs, response_get_cron_jobs = k8s_obj.get_cron_jobs(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_cron_jobs:
-                                            labels = get_labels_from_items(
-                                                response_get_cron_jobs.get('items'))
-                                            cluster_details.update({
-                                                'cron_job_details': response_get_cron_jobs,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_cron_jobs})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_cron_jobs, response_get_cron_jobs = k8s_obj.get_cron_jobs(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_cron_jobs:
+                                        labels = get_labels_from_items(
+                                            response_get_cron_jobs.get('items'))
+                                        cluster_details.update({
+                                            'cron_job_details': response_get_cron_jobs,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_cron_jobs})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1260,38 +1201,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_jobs, response_get_jobs = k8s_obj.get_jobs(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_jobs:
-                                            labels = get_labels_from_items(
-                                                response_get_jobs.get('items'))
-                                            cluster_details.update({
-                                                'job_details': response_get_jobs,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_jobs})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_jobs, response_get_jobs = k8s_obj.get_jobs(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_jobs:
+                                        labels = get_labels_from_items(
+                                            response_get_jobs.get('items'))
+                                        cluster_details.update({
+                                            'job_details': response_get_jobs,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_jobs})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1330,38 +1266,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_storage_class, response_get_storage_class = k8s_obj.get_storage_classes(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_storage_class:
-                                            labels = get_labels_from_items(
-                                                response_get_storage_class.get('items'))
-                                            cluster_details.update({
-                                                'storage_class_details': response_get_storage_class,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_storage_class})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_storage_class, response_get_storage_class = k8s_obj.get_storage_classes(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_storage_class:
+                                        labels = get_labels_from_items(
+                                            response_get_storage_class.get('items'))
+                                        cluster_details.update({
+                                            'storage_class_details': response_get_storage_class,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_storage_class})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1400,38 +1331,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_replication_controllers, response_get_replication_controllers = k8s_obj.get_replication_controllers(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_replication_controllers:
-                                            labels = get_labels_from_items(
-                                                response_get_replication_controllers.get('items'))
-                                            cluster_details.update({
-                                                'replication_controller_details': response_get_replication_controllers,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_replication_controllers})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_replication_controllers, response_get_replication_controllers = k8s_obj.get_replication_controllers(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_replication_controllers:
+                                        labels = get_labels_from_items(
+                                            response_get_replication_controllers.get('items'))
+                                        cluster_details.update({
+                                            'replication_controller_details': response_get_replication_controllers,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_replication_controllers})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1470,38 +1396,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_stateful_sets, response_get_stateful_sets = k8s_obj.get_stateful_sets(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_stateful_sets:
-                                            labels = get_labels_from_items(
-                                                response_get_stateful_sets.get('items'))
-                                            cluster_details.update({
-                                                'stateful_set_details': response_get_stateful_sets,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_stateful_sets})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_stateful_sets, response_get_stateful_sets = k8s_obj.get_stateful_sets(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_stateful_sets:
+                                        labels = get_labels_from_items(
+                                            response_get_stateful_sets.get('items'))
+                                        cluster_details.update({
+                                            'stateful_set_details': response_get_stateful_sets,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_stateful_sets})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1540,38 +1461,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_replica_sets, response_get_replica_sets = k8s_obj.get_replica_sets(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_replica_sets:
-                                            labels = get_labels_from_items(
-                                                response_get_replica_sets.get('items'))
-                                            cluster_details.update({
-                                                'replica_set_details': response_get_replica_sets,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_replica_sets})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_replica_sets, response_get_replica_sets = k8s_obj.get_replica_sets(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_replica_sets:
+                                        labels = get_labels_from_items(
+                                            response_get_replica_sets.get('items'))
+                                        cluster_details.update({
+                                            'replica_set_details': response_get_replica_sets,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_replica_sets})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1610,38 +1526,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_daemon_sets, response_get_daemon_sets = k8s_obj.get_daemon_sets(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_daemon_sets:
-                                            labels = get_labels_from_items(
-                                                response_get_daemon_sets.get('items'))
-                                            cluster_details.update({
-                                                'daemon_set_details': response_get_daemon_sets,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_daemon_sets})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_daemon_sets, response_get_daemon_sets = k8s_obj.get_daemon_sets(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_daemon_sets:
+                                        labels = get_labels_from_items(
+                                            response_get_daemon_sets.get('items'))
+                                        cluster_details.update({
+                                            'daemon_set_details': response_get_daemon_sets,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_daemon_sets})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1680,38 +1591,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_config_maps, response_get_config_maps = k8s_obj.get_config_maps(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_config_maps:
-                                            labels = get_labels_from_items(
-                                                response_get_config_maps.get('items'))
-                                            cluster_details.update({
-                                                'config_map_details': response_get_config_maps,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_config_maps})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_config_maps, response_get_config_maps = k8s_obj.get_config_maps(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_config_maps:
+                                        labels = get_labels_from_items(
+                                            response_get_config_maps.get('items'))
+                                        cluster_details.update({
+                                            'config_map_details': response_get_config_maps,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_config_maps})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1750,38 +1656,33 @@ class Alibaba_CS:
                         error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                             cluster)
                         if not error_check_database_state_and_update:
-                            if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                if 'running' in cluster.get(
-                                        'state'):
-                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                        cluster_id)
-                                    if not error_describe_cluster_config_token_endpoint:
-                                        # Adding unique labels for the cluster_roles in a single cluster
-                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                        error_get_ingresses, response_get_ingresses = k8s_obj.get_ingresses(
-                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                'cluster_public_endpoint'),
-                                            token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                        if not error_get_ingresses:
-                                            labels = get_labels_from_items(
-                                                response_get_ingresses.get('items'))
-                                            cluster_details.update({
-                                                'ingress_details': response_get_ingresses,
-                                                'labels': labels
-                                            })
-                                        else:
-                                            cluster_details.update({'error': response_get_ingresses})
+                            if 'running' in cluster.get(
+                                    'state'):
+                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                    cluster_id)
+                                if not error_describe_cluster_config_token_endpoint:
+                                    # Adding unique labels for the cluster_roles in a single cluster
+                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                    error_get_ingresses, response_get_ingresses = k8s_obj.get_ingresses(
+                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                            'cluster_public_endpoint'),
+                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                    if not error_get_ingresses:
+                                        labels = get_labels_from_items(
+                                            response_get_ingresses.get('items'))
+                                        cluster_details.update({
+                                            'ingress_details': response_get_ingresses,
+                                            'labels': labels
+                                        })
                                     else:
-                                        cluster_details.update(
-                                            {'error': response_describe_cluster_config_token_endpoint})
+                                        cluster_details.update({'error': response_get_ingresses})
                                 else:
-                                    # If cluster is not in running state
-                                    cluster_details.update({'error': 'Cluster is not in running state'})
+                                    cluster_details.update(
+                                        {'error': response_describe_cluster_config_token_endpoint})
                             else:
-                                cluster_details.update({
-                                    'error':
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                                })
+                                # If cluster is not in running state
+                                cluster_details.update({'error': 'Cluster is not in running state'})
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                         cluster_details_list.append(cluster_details)
@@ -1822,32 +1723,29 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 cluster_accessed_flag = True
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
 
-                                            error_create_k8s_object, response_create_k8s_object = k8s_obj.create_k8s_object(
-                                                cluster_id=cluster_id,
-                                                data=data,
-                                                namespace=namespace)
+                                        error_create_k8s_object, response_create_k8s_object = k8s_obj.create_k8s_object(
+                                            cluster_id=cluster_id,
+                                            data=data,
+                                            namespace=namespace)
 
-                                            if error_create_k8s_object:
-                                                # If any error occurred while
-                                                # creating application using file
-                                                raise Exception(response_create_k8s_object)
-                                        else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                        if error_create_k8s_object:
+                                            # If any error occurred while
+                                            # creating application using file
+                                            raise Exception(response_create_k8s_object)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     if not cluster_accessed_flag:
@@ -1982,42 +1880,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_pods(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_pods(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2057,42 +1952,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_persistent_volume_claims(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_persistent_volume_claims(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2132,42 +2024,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_cron_jobs(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_cron_jobs(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2207,42 +2096,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_daemon_sets(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_daemon_sets(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2282,42 +2168,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_deployments(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_deployments(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2357,42 +2240,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_jobs(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_jobs(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2432,42 +2312,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_replica_sets(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_replica_sets(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2507,42 +2384,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_replication_controllers(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_replication_controllers(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2582,42 +2456,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_stateful_sets(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_stateful_sets(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2657,42 +2528,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_services(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_services(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2731,42 +2599,38 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_persistent_volumes(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_persistent_volumes(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_without_namespace(
+                                                objects=response_objects, name=name,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_without_namespace(
-                                                    objects=response_objects, name=name,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2805,42 +2669,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_storage_classes(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_storage_classes(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_without_namespace(
+                                                objects=response_objects, name=name,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_without_namespace(
-                                                    objects=response_objects, name=name,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2880,42 +2741,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_config_maps(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_config_maps(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -2955,42 +2813,39 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_secrets(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_secrets(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
+
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -3030,42 +2885,38 @@ class Alibaba_CS:
                         if not error_check_database_state_and_update:
                             if cluster_id == cluster.get('cluster_id'):
                                 access_flag_for_cluster_id = False
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_pods, response_objects = k8s_obj.get_ingresses(
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_pods, response_objects = k8s_obj.get_ingresses(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+
+                                        if not error_get_pods:
+                                            error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
+                                                objects=response_objects, name=name, namespace=namespace,
                                                 cluster_url=response_describe_cluster_config_token_endpoint.get(
                                                     'cluster_public_endpoint'),
                                                 token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-
-                                            if not error_get_pods:
-                                                error_delete_object_with_namespace, response_delete_object_with_namespace = k8s_obj.delete_object_with_namespace(
-                                                    objects=response_objects, name=name, namespace=namespace,
-                                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_public_endpoint'),
-                                                    token=response_describe_cluster_config_token_endpoint.get(
-                                                        'cluster_token')
-                                                )
-                                                if error_delete_object_with_namespace:
-                                                    # Unable to delete object
-                                                    raise Exception(response_delete_object_with_namespace)
-                                            else:
+                                                    'cluster_token')
+                                            )
+                                            if error_delete_object_with_namespace:
                                                 # Unable to delete object
-                                                raise Exception(response_objects)
+                                                raise Exception(response_delete_object_with_namespace)
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            # Unable to delete object
+                                            raise Exception(response_objects)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
                         else:
                             raise Exception(response_check_database_state_and_update)
                     # if invalid cluster_id is provided
@@ -3102,31 +2953,27 @@ class Alibaba_CS:
                             error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                                 cluster)
                             if not error_check_database_state_and_update:
-                                if 'parameters' in cluster and cluster.get('parameters') is not None:
-                                    if 'running' in cluster.get(
-                                            'state'):
-                                        error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                            cluster_id)
-                                        if not error_describe_cluster_config_token_endpoint:
-                                            # Adding unique labels for the cluster_roles in a single cluster
-                                            k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                            error_get_all_resources, response_get_all_resources = k8s_obj.get_all_resources(
-                                                cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_public_endpoint'),
-                                                token=response_describe_cluster_config_token_endpoint.get(
-                                                    'cluster_token'))
-                                            if not error_get_all_resources:
-                                                cluster_details = response_get_all_resources
-                                            else:
-                                                raise Exception(response_get_all_resources)
+                                if 'running' in cluster.get(
+                                        'state'):
+                                    error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                        cluster_id)
+                                    if not error_describe_cluster_config_token_endpoint:
+                                        # Adding unique labels for the cluster_roles in a single cluster
+                                        k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                        error_get_all_resources, response_get_all_resources = k8s_obj.get_all_resources(
+                                            cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_public_endpoint'),
+                                            token=response_describe_cluster_config_token_endpoint.get(
+                                                'cluster_token'))
+                                        if not error_get_all_resources:
+                                            cluster_details = response_get_all_resources
                                         else:
-                                            raise Exception(response_describe_cluster_config_token_endpoint)
+                                            raise Exception(response_get_all_resources)
                                     else:
-                                        # If cluster is not in running state
-                                        raise Exception('Cluster is not in running state')
+                                        raise Exception(response_describe_cluster_config_token_endpoint)
                                 else:
-                                    raise Exception(
-                                        'Unable to find the parameter for cluster. Either it is in initial or failed state')
+                                    # If cluster is not in running state
+                                    raise Exception('Cluster is not in running state')
                             else:
                                 raise Exception(response_check_database_state_and_update)
                     if not cluster_access_flag:
@@ -3174,32 +3021,27 @@ class Alibaba_CS:
                     error_check_database_state_and_update, response_check_database_state_and_update = self.check_database_state_and_update(
                         cluster)
                     if not error_check_database_state_and_update:
-                        if 'parameters' in cluster and cluster.get('parameters') is not None:
-                            if 'running' in cluster.get('state'):
-                                error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
-                                    cluster_id)
-                                if not error_describe_cluster_config_token_endpoint:
-                                    # Adding unique labels for the cluster_roles in a single cluster
-                                    k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
-                                    error_get_widget_information, response_get_widget_information = k8s_obj.get_widget_information(
-                                        cluster_url=response_describe_cluster_config_token_endpoint.get(
-                                            'cluster_public_endpoint'),
-                                        token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
-                                    if not error_get_widget_information:
-                                        cluster_details.update({'component_details': response_get_widget_information})
-                                    else:
-                                        cluster_details.update({'error': response_get_widget_information})
+                        if 'running' in cluster.get('state'):
+                            error_describe_cluster_config_token_endpoint, response_describe_cluster_config_token_endpoint = self.describe_cluster_config_token_endpoint(
+                                cluster_id)
+                            if not error_describe_cluster_config_token_endpoint:
+                                # Adding unique labels for the cluster_roles in a single cluster
+                                k8s_obj = response_describe_cluster_config_token_endpoint.get('k8s_object')
+                                error_get_widget_information, response_get_widget_information = k8s_obj.get_widget_information(
+                                    cluster_url=response_describe_cluster_config_token_endpoint.get(
+                                        'cluster_public_endpoint'),
+                                    token=response_describe_cluster_config_token_endpoint.get('cluster_token'))
+                                if not error_get_widget_information:
+                                    cluster_details.update({'component_details': response_get_widget_information})
                                 else:
-                                    cluster_details.update(
-                                        {'error': response_describe_cluster_config_token_endpoint})
+                                    cluster_details.update({'error': response_get_widget_information})
                             else:
-                                # If cluster is not in running state
-                                pass
+                                cluster_details.update(
+                                    {'error': response_describe_cluster_config_token_endpoint})
                         else:
-                            cluster_details.update({
-                                'error':
-                                    'Unable to find the parameter for cluster. Either it is in initial or failed state'
-                            })
+                            # If cluster is not in running state
+                            pass
+
                     else:
                         raise Exception(response_check_database_state_and_update)
                     cluster_details_list.append(cluster_details)
