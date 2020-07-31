@@ -72,21 +72,28 @@ class Alibaba_ECS:
 
             request = CommonRequest()
             request.set_accept_format('json')
-            request.set_domain('ecs.aliyuncs.com')
-            request.set_method('POST')
-            request.set_version('2014-05-26')
+            request.set_domain('cr.cn-hangzhou.aliyuncs.com')
+            request.set_method('GET')
+            request.set_protocol_type('https')
+            request.set_version('2016-06-07')
             request.set_action_name('DescribeRegions')
+
+            request.add_header('Content-Type', 'application/json')
+            request.set_uri_pattern('/regions')
+            body = '''{}'''
+            request.set_content(body.encode('utf-8'))
 
             regions = conn.do_action_with_exception(request)
             regions = json.loads(regions)
-            result = regions.get('Regions')
+            result = regions.get('data').get('regions')
             region_list = []
             # skip regions {'cn-qingdao', 'cn-huhehaote', 'cn-chengdu'} because container service not supported in
             # these regions
-            for region in result.get('Region'):
-                if 'cn-heyuan' in str(region.get('RegionId')) or 'cn-chengdu' in str(region.get('RegionId')):
-                    continue
-                region_list.append(str(region.get('RegionId')))
+            for region in result:
+                # if 'wulanchabu' in str(region.get('regionId')) or 'cn-heyuan' in str(
+                #         region.get('regionId')) or 'cn-chengdu' in str(region.get('regionId')):
+                #     continue
+                region_list.append(str(region.get('regionId')))
             return True, region_list
         except Exception as e:
             return False, e.message
