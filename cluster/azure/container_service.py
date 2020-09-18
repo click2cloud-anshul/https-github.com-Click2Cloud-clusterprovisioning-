@@ -149,7 +149,7 @@ class Azure_CS:
         except Exception as e:
             error = True
             response = e.message
-            print e.message
+            print(e.message)
         finally:
             return error, response
 
@@ -182,7 +182,7 @@ class Azure_CS:
         except Exception as e:
             error = True
             response = e.message
-            print e.message
+            print(e.message)
         finally:
             return error, response
 

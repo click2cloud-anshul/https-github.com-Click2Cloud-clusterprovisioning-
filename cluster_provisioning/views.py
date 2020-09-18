@@ -3655,7 +3655,7 @@ def on_premises_all_service_details(request):
             'error': e.message,
             'is_successful': False
         })
-        print e.message
+        print(e.message)
     finally:
         return JsonResponse(api_response, safe=False)
 

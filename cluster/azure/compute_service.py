@@ -38,7 +38,7 @@ def vm_size_object_to_dict(vm_size):
     except Exception as e:
         error = True
         response = e.message
-        print e.message
+        print(e.message)
     finally:
         return error, response
 
@@ -133,7 +133,7 @@ class Azure_Compute_Service:
         except Exception as e:
             error = True
             response = e.message
-            print e.message
+            print(e.message)
         finally:
             return error, response
 
@@ -174,6 +174,6 @@ class Azure_Compute_Service:
         except Exception as e:
             error = True
             response = e.message
-            print e.message
+            print(e.message)
         finally:
             return error, response

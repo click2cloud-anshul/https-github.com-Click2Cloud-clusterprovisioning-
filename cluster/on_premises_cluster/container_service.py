@@ -96,7 +96,7 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
-            print e.message
+            print(e.message)
         finally:
             return error, response
 
@@ -140,7 +140,7 @@ class On_Premises_Cluster:
 
         except Exception as e:
             response_cluster_details.update({'error': e.message})
-            print e.message
+            print(e.message)
         finally:
             return response_cluster_details
 
@@ -184,7 +184,7 @@ class On_Premises_Cluster:
 
         except Exception as e:
             response_cluster_details.update({'error': e.message})
-            print e.message
+            print(e.message)
         finally:
             return response_cluster_details
 
@@ -266,7 +266,7 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
-            print e.message
+            print(e.message)
         finally:
             return error, response
 
@@ -283,7 +283,7 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
-            print e.message
+            print(e.message)
         finally:
             return error, response
 
@@ -320,7 +320,7 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
-            print e.message
+            print(e.message)
         finally:
             return error, response
 
@@ -351,6 +351,6 @@ class On_Premises_Cluster:
         except Exception as e:
             error = True
             response = e.message
-            print e.message
+            print(e.message)
         finally:
             return error, response

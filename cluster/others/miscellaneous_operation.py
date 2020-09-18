@@ -52,7 +52,7 @@ def get_access_key_secret_key_list(user_id, cloud_type):
                 error = True
                 response = result_api.get('error')
                 if not result_api.get('error'):
-                    print result_api.get('error')
+                    print(result_api.get('error'))
                     raise Exception('Failed to decrypt the credentials.')
 
     except Exception as e:
@@ -135,7 +135,7 @@ def key_validations_cluster_provisioning(request_keys, validation_keys):
         response.update({
             'message': e.message
         })
-        print e.message
+        print(e.message)
     finally:
         if len(response) == 0:
             # return error=False if response is empty
@@ -195,7 +195,7 @@ def insert_or_update_cluster_details(params):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -250,7 +250,7 @@ def insert_or_update_namespace_details(params):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -305,7 +305,7 @@ def insert_or_update_repository_details(params):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -329,7 +329,7 @@ def insert_or_update_s2i_details(params, insert_unique_id=None):
         comment = params.get('comment')
         tag = params.get('tag')
         new_image_name = params.get('image_name')
-        print 'comment = %s for new_image_name = %s' % (comment, new_image_name)
+        print('comment = %s for new_image_name = %s' % (comment, new_image_name))
         if params.get('is_insert'):
             github_url = params.get('github_url')
             builder_image = params.get('builder_image')
@@ -366,7 +366,7 @@ def insert_or_update_s2i_details(params, insert_unique_id=None):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -391,7 +391,7 @@ def get_db_info_using_cluster_id(cluster_id=None):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -416,7 +416,7 @@ def get_db_info_using_provider_id(provider_id):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -442,7 +442,7 @@ def get_db_info_using_user_id_and_provider_id(user_id, provider_id):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -468,7 +468,7 @@ def get_s2i_details(user_id):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -502,7 +502,7 @@ def delete_s2i_image_detail_from_db(json_request):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -529,7 +529,7 @@ def create_cluster_config_file(cluster_id, config_details):
     except Exception as e:
         error = True
         response = e.message
-        print e.message
+        print(e.message)
     finally:
         return error, response
 
@@ -573,7 +573,7 @@ def get_grouped_credential_list(credentials):
     except Exception as e:
         error = True
         response = e.message
-        print e.message
+        print(e.message)
     finally:
         return error, response
 
@@ -601,7 +601,7 @@ def check_for_provider_id(provider_id, credentials):
     except Exception as e:
         error = True
         response = e.message
-        print e.message
+        print(e.message)
     finally:
         return error, response
 
@@ -649,7 +649,7 @@ def insert_or_update_cluster_config_details(params):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -691,7 +691,7 @@ def get_cluster_config_details(provider, cluster_id):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -722,7 +722,7 @@ def run_postgres_sql_script():
         connection.commit()
         print("Database script execution completed")
     except Exception as e:
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -741,7 +741,7 @@ def clean_instance_type_details():
         connection.commit()
         print("Clearing instance list for Alibaba is completed")
     except Exception as e:
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -774,7 +774,7 @@ def get_instance_details(provider_name, zone_id):
     except Exception as e:
         error = True
         response = e.message
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()
@@ -823,7 +823,7 @@ def insert_or_update_instance_details(params):
     except Exception as e:
         error = True
         response = 'Cannot connect to Database server'
-        print e.message
+        print(e.message)
     finally:
         if cursor is not None:
             cursor.close()

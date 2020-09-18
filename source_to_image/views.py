@@ -64,7 +64,7 @@ def create_new_image_using_s2i(request):
         api_response.update({
             'error': e.message
         })
-        print e.message
+        print(e.message)
     finally:
         return JsonResponse(api_response, safe=False)
 
@@ -142,7 +142,7 @@ def delete_builder_image(docker_cli, builder_image):
     except Exception as e:
         error = True
         response = e.message
-        print e.message
+        print(e.message)
     finally:
         return error, response
 
@@ -163,7 +163,7 @@ def delete_new_image(docker_cli, new_image):
     except Exception as e:
         error = True
         response = e.message
-        print e.message
+        print(e.message)
     finally:
         return error, response
 
@@ -184,7 +184,7 @@ def delete_tag_image(docker_cli, tag_image):
     except Exception as e:
         error = True
         response = e.message
-        print e.message
+        print(e.message)
     finally:
         return error, response
 
@@ -250,7 +250,7 @@ def after_response_create_image(json_request):
                                  'comment': 'Error while building the new image'})
             insert_response, error = insert_or_update_s2i_details(json_request, record_unique_id)
 
-            print insert_response
+            print(insert_response)
 
             if error:
                 json_request.update({'is_insert': False,
@@ -368,7 +368,7 @@ def create_new_image_operation(json_request):
     try:
         after_response_create_image(json_request)
     except Exception as e:
-        print e.message
+        print(e.message)
 
 
 @after_response.enable
@@ -381,7 +381,7 @@ def create_new_application_operation(json_request):
     try:
         after_response_create_image(json_request)
     except Exception as e:
-        print e.message
+        print(e.message)
 
 
 @api_view(['GET'])
@@ -427,7 +427,7 @@ def get_image_details(request):
         api_response.update({
             'error': e.message
         })
-        print e.message
+        print(e.message)
     finally:
         return JsonResponse(api_response, safe=False)
 
@@ -461,6 +461,6 @@ def delete_image_detail(request):
         api_response.update({
             'error': e.message
         })
-        print e.message
+        print(e.message)
     finally:
         return JsonResponse(api_response, safe=False)
