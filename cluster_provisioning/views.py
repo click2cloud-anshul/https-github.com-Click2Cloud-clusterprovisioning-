@@ -89,6 +89,60 @@ def alibaba_region_list(request):
 
 
 @api_view(['POST'])
+def alibaba_list_providers(request):
+    """
+    List the providers on the alibaba
+    :param request:
+    :return:
+    """
+    provider_name_list = []
+    api_response = {
+        'is_successful': True,
+        'provider_list': [],
+        'error': None
+    }
+    try:
+        json_request = json.loads(request.body)
+        valid_json_keys = ['user_id']
+        # key validations
+        error_key_validations_cluster_provisioning, response_key_validations_cluster_provisioning = key_validations_cluster_provisioning(
+            json_request, valid_json_keys)
+
+        if not error_key_validations_cluster_provisioning:
+
+            user_id = json_request.get('user_id')
+            # Fetching access keys and secret keys from db
+            error_get_access_key_secret_key_list, response_get_access_key_secret_key_list = get_access_key_secret_key_list(
+                user_id, miscellaneous_operation.ALIBABA_CLOUD)
+            if not error_get_access_key_secret_key_list:
+                # groups the common credentials according to the access key
+                error_get_grouped_credential_list, response_get_grouped_credential_list = get_grouped_credential_list(
+                    response_get_access_key_secret_key_list)
+
+                if not error_get_grouped_credential_list:
+                    for grouped_credential_list in response_get_grouped_credential_list:
+                        for credentials in grouped_credential_list.get('provider_name_list'):
+                            provider_name_list.append(credentials)
+                    api_response.update({'provider_list': provider_name_list})
+                else:
+                    # if provider_id is not present in credentials
+                    raise Exception(response_get_grouped_credential_list)
+            else:
+                # If user_id is incorrect or no user is found is database
+                raise Exception(response_get_access_key_secret_key_list)
+        else:
+            raise Exception(response_key_validations_cluster_provisioning.get('error'))
+    except Exception as e:
+        api_response.update({
+            'error': e.message,
+            'is_successful': False
+        })
+
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+@api_view(['POST'])
 def alibaba_instance_list(request):
     """
     get the list of the available instances
@@ -312,6 +366,7 @@ def alibaba_network_details(request):
                                 api_response.update({'is_successful': flag,
                                                      'error': result})
                                 break
+
                 if access_flag:
                     api_response.update({'is_successful': False,
                                          'error': 'Invalid provider_id or no data available.'})
@@ -1958,6 +2013,7 @@ def alibaba_create_kubernetes_cluster(request):
                             'cluster_details': json.dumps(request_body),
                             'status': 'Initiated',
                             'operation': 'created from cloudbrain', })
+                        print(cluster_info_db)
                         error_insert_or_update_cluster_details, response_insert_or_update_cluster_details = insert_or_update_cluster_details(
                             cluster_info_db)
                         if error_insert_or_update_cluster_details:
@@ -3867,6 +3923,89 @@ def alibaba_get_widget_information(request):
         api_response.update({
             'error': e.message,
             'is_successful': False,
+        })
+    finally:
+        return JsonResponse(api_response, safe=False)
+
+
+
+# -------------------------New---Development-----------------
+
+
+
+
+
+@api_view(['POST'])
+def alibaba_describe_zones(request):
+    """
+    get the list of the available instances
+    :param request:
+    :return:
+    """
+    system_disk = {}
+    api_response = {'is_successful': True,
+                    'details': system_disk,
+                    'error': None}
+    access_flag = True
+    valid_json_keys = ['user_id',
+                       'provider_id',
+                       'region_id',
+                       'zone_id']
+    try:
+        json_request = json.loads(request.body)
+        # key validations
+        error, response = key_validations_cluster_provisioning(json_request, valid_json_keys)
+        if error:
+            api_response.update({
+                'error': response.get('error'),
+                'is_successful': False
+            })
+        else:
+            user_id = json_request.get('user_id')
+            provider_id = json_request.get('provider_id')
+            region_id = json_request.get('region_id')
+            zone_id= json_request.get('zone_id')
+            # Fetching access keys and secret keys from db
+            error, access_key_secret_key_list = get_access_key_secret_key_list(user_id,
+                                                                               miscellaneous_operation.ALIBABA_CLOUD)
+            if not error:
+                unique_access_key_list = []
+                if len(list(access_key_secret_key_list)) > 0:
+                    # creating unique list of access key
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') in unique_access_key_list:
+                            continue
+                        else:
+                            unique_access_key_list.append(access_key_secret_key.get('client_id'))
+                for access_key in unique_access_key_list:
+                    for access_key_secret_key in access_key_secret_key_list:
+                        if access_key_secret_key.get('client_id') == access_key and access_key_secret_key.get(
+                                'id') == int(provider_id):
+                            access_flag = False
+                            alibaba_ecs = Alibaba_ECS(
+                                ali_access_key=access_key_secret_key.get('client_id'),
+                                ali_secret_key=access_key_secret_key.get('client_secret'),
+                                region_id=region_id
+                            )
+                            error_describe_zones, response_list_ecs_zones = alibaba_ecs.list_zones(region_id)
+
+                            zone_info = list(filter(lambda x: x.get("ZoneId") in zone_id, response_list_ecs_zones))
+                            print(zone_info)
+
+                            if not error_describe_zones:
+                                system_disk.update({'ZoneDetails': zone_info})
+                            else:
+                                system_disk.update({'error': response_list_ecs_zones})
+                if access_flag:
+                    system_disk.update({'is_successful': False,
+                                         'error': 'Invalid provider_id or no data available.'})
+            else:
+                system_disk.update({'is_successful': False,
+                                     'error': 'Invalid user_id or no data available.'})
+    except Exception as e:
+        api_response.update({
+            'error': e,
+            'is_successful': False
         })
     finally:
         return JsonResponse(api_response, safe=False)

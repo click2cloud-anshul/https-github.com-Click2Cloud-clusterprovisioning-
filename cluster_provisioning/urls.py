@@ -4,6 +4,7 @@ from cluster_provisioning import views
 
 urlpatterns = [
     url(r'^alibaba/get-region-list$', views.alibaba_region_list),
+    url(r'^alibaba/list-providers$', views.alibaba_list_providers),
     url(r'^alibaba/get-instance-list$', views.alibaba_instance_list),
     url(r'^alibaba/get-ssh-keypair-list$', views.alibaba_ssh_key_pair_list),
     url(r'^alibaba/get-network-details$', views.alibaba_network_details),
@@ -58,4 +59,5 @@ urlpatterns = [
     url(r'^on-premises/create-application$', views.on_premises_create_application),
     url(r'^on-premises/get-all-resources$', views.on_premises_get_all_resources),
     url(r'^alibaba/get-widget-information$', views.alibaba_get_widget_information),
+    url(r'^alibaba/describe-zones$', views.alibaba_describe_zones),
 ]

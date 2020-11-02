@@ -5,6 +5,7 @@ import time
 
 import requests
 from django.db import connection
+from idna import unicode
 
 from clusterProvisioningClient.settings import BASE_DIR, decrypt_credentials_api_endpoint
 
@@ -161,7 +162,11 @@ def insert_or_update_cluster_details(params):
         user_id = int(params.get('user_id'))
         provider_id = int(params.get('provider_id'))
         cluster_id = str(params.get('cluster_id'))
-        cluster_details = str(base64.b64encode(json.dumps(params.get('cluster_details'))))
+        a = params.get('cluster_details')
+        print(a)
+        # cluster_details = str(base64.b64encode(params.get('cluster_details')))
+        cluster_details = params.get('cluster_details')
+        print(cluster_details)
         status = params.get('status')
         operation = params.get('operation')
         if params.get('is_insert'):

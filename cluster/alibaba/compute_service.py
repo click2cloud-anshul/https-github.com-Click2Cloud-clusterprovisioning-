@@ -326,36 +326,40 @@ class Alibaba_ECS:
         finally:
             return error, response
 
-    def list_zones(self):
+    def list_zones(self,region_id):
         """
         This Function will list all the zones for all the regions of alibaba cloud
         """
         error = False
         response = None
-        region_and_zones_list = []
         try:
-            is_sucessful, response_list_container_service_regions = self.list_container_service_regions()
-            if is_sucessful:
-                for region in response_list_container_service_regions:
-                    region_and_zones = {}
-                    zone_list = []
-                    client = AcsClient(self.access_key, self.secret_key, region)
-                    request = DescribeZonesRequest()
-                    request.set_accept_format('json')
-                    response = client.do_action_with_exception(request)
-                    if response is not None:
-                        json_response = json.loads(response)
-                        zones = json_response.get('Zones')
-                        if 'Zone' in zones:
-                            zone_list_alibaba = zones.get('Zone')
-                            for zone in zone_list_alibaba:
-                                zone_list.append(zone.get('ZoneId'))
-                    region_and_zones.update({"region_id": region, "zone_list": zone_list})
-                    region_and_zones_list.append(region_and_zones)
-            response = region_and_zones_list
+                client = AcsClient(self.access_key, self.secret_key, region_id)
+                request = DescribeZonesRequest()
+                request.set_accept_format('json')
+                response = client.do_action_with_exception(request)
+                if response is not None:
+                    json_response = json.loads(response)
+                    Zones = json_response.get('Zones').get('Zone')
+                    zonesDetails = []
+                    for Zone in Zones:
+                        zoneDetails = {}
+                        zoneDetails.update({'ZoneId': Zone.get('ZoneId')})
+                        ResourcesInfo = Zone.get('AvailableResources').get('ResourcesInfo')
+                        if ResourcesInfo is None:
+                            print('availableResources is None')
+                            return
+                        for availableResource in ResourcesInfo:
+                            zoneDetails.update(
+                                {'SystemDiskCategory': availableResource.get('SystemDiskCategories').get(
+                                    'supportedSystemDiskCategory'),
+                                    'Instancelist': availableResource.get('InstanceTypes').get(
+                                        'supportedInstanceType')})
+                        zonesDetails.append(zoneDetails)
+                    response = zonesDetails
         except Exception as e:
             error = True
-            response = e.message
-            print(e.message)
+            response = e
+            print(e)
         finally:
             return error, response
+
